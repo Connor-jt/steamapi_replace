@@ -28,43 +28,125 @@ typedef unsigned int   undefined4;
 typedef unsigned short undefined2;
 typedef unsigned char  undefined;
 
+// func typedefs
+typedef void* (*CreateInterface)(const char* pName, int* pReturnCode);
+typedef void* (*ReleaseThreadLocalMemory)(bool thread_exit);
 
-
-
-ulonglong SteamInternal_SteamAPI_Init(const char* pszInternalCheckInterfaceVersions, char* pOutErrMsg){
-    ulonglong SteamInit_result;
-    ulonglong last_char_index;
-    char error_output_buffer[1024];
-    longlong i;
-
-    memset(error_output_buffer, 0, 0x400);
-    SteamInit_result = init_steam(0, pszInternalCheckInterfaceVersions, error_output_buffer);
-    if (pOutErrMsg != (char*)0x0) {
-        SteamInit_result = 0xffffffffffffffff;
-        do {
-            last_char_index = SteamInit_result + 1;
-            i = SteamInit_result + 1;
-            SteamInit_result = last_char_index;
-        } while (error_output_buffer[i] != '\0');
-
-        if (last_char_index > 0x3ff)
-            last_char_index = 0x3ff;
-        
-        memcpy(pOutErrMsg, error_output_buffer, last_char_index);
-        pOutErrMsg[last_char_index] = '\0';
-    }
-    return SteamInit_result;
-}
 
 static ISteamClient* DAT_ISteamClient_ptr;
+static long* DAT_steam_client_interface17;
+static uint DAT_modules_retrieved_count;
 static char DAT_is_anon_user;
 static HMODULE DAT_steamclient_hmodule;
 //static HMODULE DAT_steamclient_ALT_module;
 static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
-static long* DAT_steamclient_ReleaseThreadLocalMemory;
+static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static uint _DAT_register_callback_mode_manual;
+
+INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefined zero, const char* SteamClient021, char* error_output_buffer){
+    //undefined auVar1[16];
+    //longlong lVar2;
+    char install_path_str_ptr;
+    //int iVar3;
+    HMODULE steamclient_library;
+    //longlong lVar4;
+    //__uint64 _Var5;
+    LPCWSTR steamclient_path_wstr;
+    CreateInterface create_interface_func;
+    INT_PTR resulting_interface;
+    //CHAR error_output[1040];
+    //CHAR steam_install_path;
+    //char acStack_427[1039];
+
+    // TODO: dont even bother RE'ing this, just write our own thing??
+    //SteamAPI_GetSteamInstallPath();
+    //DAT_steam_install_path = 0;
+    ////DAT_13b445870 = 0;
+    ////DAT_13b445878 = 0;
+    ////DAT_13b445880 = 0;
+    //*resulting_hmodule = (HMODULE)0x0;
+    //memset(&steam_install_path, 0, 0x410);
+    //install_path_str_ptr = steam_write_install_path(&steam_install_path, 0x410);
+
+
+    //if (*is_anon_user != 0) {
+    //    steamclient_library = (HMODULE)load_library_wstr(PTR_s_steamclient64.dll_13b444378, 1, zero);
+    //    *resulting_hmodule = steamclient_library;
+    //    if (steamclient_library != (HMODULE)0x0) {
+    //        steam_format_string_s_ptr(error_output, "[S_API] SteamAPI_Init(): Loaded local \'%s\' OK.\n", PTR_s_steamclient64.dll_13b444378);
+    //        OutputDebugStringA(error_output);
+    //    }
+    //}
+    //if (*resulting_hmodule == (HMODULE)0x0) {
+    //if ((*is_anon_user == 0) && (steam_running = SteamAPI_IsSteamRunning(), steam_running == '\0')) {
+    if (!SteamReplace::SteamAPI_IsSteamRunning()) {
+        //OutputDebugStringA("[S_API] SteamAPI_Init(): SteamAPI_IsSteamRunning() did not locate a running instance of Steam.\n");
+        goto init_steam_client_fail;
+    }
+    if (install_path_str_ptr == 0) {
+        // "Could not determine Steam client install directory."
+        goto init_steam_client_fail;
+    }
+    // more stuff related to getting the steam path string
+    //lVar2 = -1;
+    //do {
+    //    lVar4 = lVar2;
+    //    lVar2 = lVar4 + 1;
+    //} while ((&steam_install_path)[lVar4 + 1] != '\0');
+    //auVar1 = ZEXT816(2) * ZEXT816((longlong)(int)(lVar4 + 1) + 1);
+    //_Var5 = SUB168(auVar1, 0);
+    //if (SUB168(auVar1 >> 0x40, 0) != 0) {
+    //    _Var5 = 0xffffffffffffffff;
+    //}
+    //steamclient_path_wstr = (LPCWSTR)operator_new(_Var5);
+    //iVar3 = MultiByteToWideChar(0xfde9, 0, &steam_install_path, -1, steamclient_path_wstr, (int)lVar4 + 2);
+    //if (iVar3 == 0) {
+    //    *steamclient_path_wstr = L'\0';
+    //}
+    //free(steamclient_path_wstr);
+
+    steamclient_library = LoadLibraryExW(steamclient_path_wstr, (HANDLE)0x0, 8);
+    if (!steamclient_library) 
+        steamclient_library = LoadLibraryExA(&steam_install_path, (HANDLE)0x0, 8);
+    if (!steamclient_library)
+        //steam_format_error(error_output_buffer, "Failed to load module \'%s\'");
+        goto init_steam_client_fail;
+    
+    //if (*is_anon_user == '\0') {
+    //    steam_format_string_s_ptr(error_output, "[S_API] SteamAPI_Init(): Loaded \'%s\' OK.\n", &steam_install_path);
+    //    OutputDebugStringA(error_output);
+    //}
+    //else {
+    //    steam_format_string_s_ptr(error_output, "[S_API] SteamAPI_Init(): Loaded \'%s\' OK.  (First tried local \'%s\')\n", &steam_install_path, PTR_s_steamclient64.dll_13b444378);
+    //    OutputDebugStringA(error_output);
+    //    *is_anon_user = '\0';
+    //}
+    //}
+    create_interface_func = (CreateInterface)GetProcAddress(steamclient_library, "CreateInterface");
+    if (!create_interface_func) {
+        //steam_format_error(error_output_buffer, "Unable to locate interface factory in %s.\n", "steamclient64.dll");
+        FreeLibrary(steamclient_library);
+        goto init_steam_client_fail;
+    }
+
+    DAT_steamclient_ReleaseThreadLocalMemory = (ReleaseThreadLocalMemory)GetProcAddress(DAT_steamclient_hmodule, "Steam_ReleaseThreadLocalMemory");
+
+    DAT_steam_client_interface17 = (long*)(*create_interface_func)("SteamClient017", 0);
+    resulting_interface = (INT_PTR)(*create_interface_func)(SteamClient021, 0);
+    DAT_modules_retrieved_count += 1;
+
+    *resulting_hmodule = steamclient_library; // not sure why this is set without resulting_interface being true
+    if (resulting_interface) 
+        return resulting_interface;
+    //steam_format_error(error_output_buffer, "No %s", SteamClient021);
+    
+init_steam_client_fail:
+    //steam_format_string_s_ptr(error_output, "[S_API] SteamAPI_Init(): %s\n", error_output_buffer);
+    //OutputDebugStringA(error_output);
+    return 0;
+}
 
 undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersions, char* error_output_buffer)
 {
@@ -92,7 +174,7 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
     if (!DAT_ISteamClient_ptr) return 0;
 
     DAT_is_anon_user = is_anon;
-    DAT_ISteamClient_ptr = init_steam_client(&DAT_steamclient_hmodule, &DAT_is_anon_user, 0, "SteamClient021", error_output_buffer);
+    DAT_ISteamClient_ptr = (ISteamClient*)init_steam_client(&DAT_steamclient_hmodule, &DAT_is_anon_user, 0, "SteamClient021", error_output_buffer);
     if (!DAT_ISteamClient_ptr) return 1;
     
     //DAT_13b445870 = 0;
@@ -238,6 +320,30 @@ return_failure:
     return shutdown_Code;
 }
 
+ulonglong SteamInternal_SteamAPI_Init(const char* pszInternalCheckInterfaceVersions, char* pOutErrMsg) {
+    ulonglong SteamInit_result;
+    ulonglong last_char_index;
+    char error_output_buffer[1024];
+    longlong i;
+
+    memset(error_output_buffer, 0, 0x400);
+    SteamInit_result = init_steam(0, pszInternalCheckInterfaceVersions, error_output_buffer);
+    if (pOutErrMsg != (char*)0x0) {
+        SteamInit_result = 0xffffffffffffffff;
+        do {
+            last_char_index = SteamInit_result + 1;
+            i = SteamInit_result + 1;
+            SteamInit_result = last_char_index;
+        } while (error_output_buffer[i] != '\0');
+
+        if (last_char_index > 0x3ff)
+            last_char_index = 0x3ff;
+
+        memcpy(pOutErrMsg, error_output_buffer, last_char_index);
+        pOutErrMsg[last_char_index] = '\0';
+    }
+    return SteamInit_result;
+}
 
 }
 
