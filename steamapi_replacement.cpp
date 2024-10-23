@@ -100,24 +100,24 @@ bool SteamAPI_IsSteamRunning(){
 }
 
 bool steam_write_install_path(char* out_buf, int out_buf_size){
-    char* pcVar1;
-    int iVar3;
-    LSTATUS LVar4;
-    DWORD DVar5;
-    HKEY hKey;
-    LPCWSTR pWVar6;
-    LPCWSTR lpWideCharStr;
-    HMODULE hModule;
-    ulonglong length;
-    char* pcVar8;
-    longlong lVar9;
-    longlong lVar10;
-    bool bVar11;
-    uint local_res18[2];
-    DWORD local_res20[2];
-    HKEY local_658[2];
-    char local_648[1040];
-    ulonglong uVar7;
+    //char* pcVar1;
+    //int iVar3;
+    //LSTATUS LVar4;
+    //DWORD DVar5;
+    //HKEY hKey;
+    //LPCWSTR pWVar6;
+    //LPCWSTR lpWideCharStr;
+    //HMODULE hModule;
+    //ulonglong length;
+    //char* pcVar8;
+    //longlong lVar9;
+    //longlong lVar10;
+    //bool bVar11;
+    //uint local_res18[2];
+    //DWORD local_res20[2];
+    //HKEY local_658[2];
+    //char local_648[1040];
+    //ulonglong uVar7;
 
     //if ((DAT_steam_install_path != '\0') && (param_1 == (char*)0x0)) {
     //    return true;
