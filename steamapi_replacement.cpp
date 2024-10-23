@@ -118,7 +118,6 @@ bool steam_write_install_path(char* out_buf, int out_buf_size){
     //HKEY local_658[2];
     //char local_648[1040];
     //ulonglong uVar7;
-
     //if ((DAT_steam_install_path != '\0') && (param_1 == (char*)0x0)) {
     //    return true;
     //}
@@ -251,23 +250,15 @@ INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefi
     HMODULE steamclient_library;
     //longlong lVar4;
     //__uint64 _Var5;
-    LPCWSTR steamclient_path_wstr;
+    LPWSTR steamclient_path_wstr;
     CreateInterface create_interface_func;
     INT_PTR resulting_interface;
-    //CHAR error_output[1040];
-    //CHAR steam_install_path;
+    int path_chars;
+    CHAR steam_install_path[0x410] = { 0 };
     //char acStack_427[1039];
+    //CHAR error_output[1040];
 
-    // TODO: dont even bother RE'ing this, just write our own thing??
-    //SteamAPI_GetSteamInstallPath();
-    //DAT_steam_install_path = 0;
-    ////DAT_13b445870 = 0;
-    ////DAT_13b445878 = 0;
-    ////DAT_13b445880 = 0;
     //*resulting_hmodule = (HMODULE)0x0;
-    //memset(&steam_install_path, 0, 0x410);
-    //install_path_str_ptr = steam_write_install_path(&steam_install_path, 0x410);
-
 
     //if (*is_anon_user != 0) {
     //    steamclient_library = (HMODULE)load_library_wstr(PTR_s_steamclient64.dll_13b444378, 1, zero);
@@ -279,35 +270,33 @@ INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefi
     //}
     //if (*resulting_hmodule == (HMODULE)0x0) {
     //if ((*is_anon_user == 0) && (steam_running = SteamAPI_IsSteamRunning(), steam_running == '\0')) {
-    if (!SteamReplace::SteamAPI_IsSteamRunning()) {
+    if (!SteamReplace::SteamAPI_IsSteamRunning())
         //OutputDebugStringA("[S_API] SteamAPI_Init(): SteamAPI_IsSteamRunning() did not locate a running instance of Steam.\n");
         goto init_steam_client_fail;
-    }
-    if (!install_path_str_ptr) {
+
+    //SteamAPI_GetSteamInstallPath();
+    ////DAT_13b445870 = 0;
+    ////DAT_13b445878 = 0;
+    ////DAT_13b445880 = 0;
+    //DAT_steam_install_path = 0;
+    if (!steam_write_install_path(steam_install_path, 0x410))
         // "Could not determine Steam client install directory."
         goto init_steam_client_fail;
+    
+    // count chars in string (including the null terminator)
+    path_chars = 0;
+    while (steam_install_path[path_chars++]);
+
+    steamclient_path_wstr = (LPWSTR)new char[path_chars*2];
+    if (!MultiByteToWideChar(0xfde9, 0, steam_install_path, -1, steamclient_path_wstr, path_chars)) {
+        delete[] steamclient_path_wstr;
+        goto init_steam_client_fail;
     }
-    // more stuff related to getting the steam path string
-    //lVar2 = -1;
-    //do {
-    //    lVar4 = lVar2;
-    //    lVar2 = lVar4 + 1;
-    //} while ((&steam_install_path)[lVar4 + 1] != '\0');
-    //auVar1 = ZEXT816(2) * ZEXT816((longlong)(int)(lVar4 + 1) + 1);
-    //_Var5 = SUB168(auVar1, 0);
-    //if (SUB168(auVar1 >> 0x40, 0) != 0) {
-    //    _Var5 = 0xffffffffffffffff;
-    //}
-    //steamclient_path_wstr = (LPCWSTR)operator_new(_Var5);
-    //iVar3 = MultiByteToWideChar(0xfde9, 0, &steam_install_path, -1, steamclient_path_wstr, (int)lVar4 + 2);
-    //if (iVar3 == 0) {
-    //    *steamclient_path_wstr = L'\0';
-    //}
-    //free(steamclient_path_wstr);
 
     steamclient_library = LoadLibraryExW(steamclient_path_wstr, (HANDLE)0x0, 8);
+    delete[] steamclient_path_wstr;
     if (!steamclient_library) 
-        steamclient_library = LoadLibraryExA(&steam_install_path, (HANDLE)0x0, 8);
+        steamclient_library = LoadLibraryExA(steam_install_path, (HANDLE)0x0, 8);
     if (!steamclient_library)
         //steam_format_error(error_output_buffer, "Failed to load module \'%s\'");
         goto init_steam_client_fail;
