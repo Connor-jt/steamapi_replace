@@ -70,19 +70,17 @@ bool SteamAPI_IsSteamRunning(){
     DWORD type = 0;
     HKEY proc_key = 0;
 
-    char string_buffer[70] = {0}; // added 2 extra bytes at the end
-    LPWSTR str_buf = (LPWSTR)string_buffer;
-
-    if (!MultiByteToWideChar(0xfde9, 0, "Software\\Valve\\Steam\\ActiveProcess", -1, str_buf, 35))
+    char str_buf[70] = {0}; 
+    if (!MultiByteToWideChar(0xfde9, 0, "Software\\Valve\\Steam\\ActiveProcess", -1, (LPWSTR)str_buf, 35))
         return false;
-    if (RegOpenKeyExW(check_HKEY("HKCU"), str_buf, 0, 0x20219, &proc_key))
+    if (RegOpenKeyExW(check_HKEY("HKCU"), (LPWSTR)str_buf, 0, 0x20219, &proc_key))
         return false;
 
-    memset(string_buffer, 0, 70); // clean the buffer
-    if (!MultiByteToWideChar(0xfde9, 0, "pid", -1, str_buf, 4)){
+    memset(str_buf, 0, 70); // clean the buffer
+    if (!MultiByteToWideChar(0xfde9, 0, "pid", -1, (LPWSTR)str_buf, 4)){
         RegCloseKey(proc_key);
         return false;}
-    if (RegQueryValueExW(proc_key, str_buf, 0, &type, (LPBYTE)&dwProcessId, &cbdata)) {
+    if (RegQueryValueExW(proc_key, (LPWSTR)str_buf, 0, &type, (LPBYTE)&dwProcessId, &cbdata)) {
         RegCloseKey(proc_key);
         return false;}
     RegCloseKey(proc_key);
@@ -99,6 +97,150 @@ bool SteamAPI_IsSteamRunning(){
 
     CloseHandle(hProcess);
     return false;
+}
+
+bool steam_write_install_path(char* out_buf, int out_buf_size){
+    char* pcVar1;
+    int iVar3;
+    LSTATUS LVar4;
+    DWORD DVar5;
+    HKEY hKey;
+    LPCWSTR pWVar6;
+    LPCWSTR lpWideCharStr;
+    HMODULE hModule;
+    ulonglong length;
+    char* pcVar8;
+    longlong lVar9;
+    longlong lVar10;
+    bool bVar11;
+    uint local_res18[2];
+    DWORD local_res20[2];
+    HKEY local_658[2];
+    char local_648[1040];
+    ulonglong uVar7;
+
+    //if ((DAT_steam_install_path != '\0') && (param_1 == (char*)0x0)) {
+    //    return true;
+    //}
+    //steam_memset(local_648, 0, 0x410);
+    //hKey = (HKEY)check_HKEY(&DAT_str_HKCU);
+    //local_658[0] = (HKEY)0x0;
+    //pWVar6 = (LPCWSTR)operator_new(0x46);
+    //iVar3 = MultiByteToWideChar(0xfde9, 0, "Software\\Valve\\Steam\\ActiveProcess", -1, pWVar6, 0x23);
+    //if (iVar3 == 0) {
+    //    *pWVar6 = L'\0';
+    //}
+    //LVar4 = RegOpenKeyExW(hKey, pWVar6, 0, 0x20219, local_658);
+    //free_mem(pWVar6);
+
+    HKEY proc_key = 0;
+
+    char str_buf[70] = { 0 }; // added 2 extra bytes at the end
+    if (!MultiByteToWideChar(0xfde9, 0, "Software\\Valve\\Steam\\ActiveProcess", -1, (LPWSTR)str_buf, 35))
+        return false;
+    if (RegOpenKeyExW(check_HKEY("HKCU"), (LPWSTR)str_buf, 0, 0x20219, &proc_key))
+        return false;
+
+
+    //bVar11 = LVar4 == 0;
+    //if (bVar11) {
+    //    pWVar6 = (LPCWSTR)operator_new(0x822);
+    //    local_res18[0] = 0x820;
+    //    lpWideCharStr = (LPCWSTR)operator_new(0x22);
+    //    iVar3 = MultiByteToWideChar(0xfde9, 0, "SteamClientDll64", -1, lpWideCharStr, 0x11);
+    //    if (iVar3 == 0) {
+    //        *lpWideCharStr = L'\0';
+    //    }
+    //    LVar4 = RegQueryValueExW(proc_key, lpWideCharStr, (LPDWORD)0x0, local_res20, (LPBYTE)pWVar6, local_res18);
+    //    free_mem(lpWideCharStr);
+    //    if (LVar4 == 0) {
+    //        pWVar6[local_res18[0] >> 1] = L'\0';
+    //        iVar3 = WideCharToMultiByte(0xfde9, 0, pWVar6, -1, local_648, 0x410, (LPCSTR)0x0, (LPBOOL)0x0);
+    //        if (iVar3 == 0) {
+    //            LVar4 = 0x7a;
+    //        }
+    //    }
+    //    free_mem(pWVar6);
+    //    RegCloseKey(local_658[0]);
+    //    bVar11 = LVar4 == 0;
+    //}
+
+
+    char processPath[0x410]; {
+        BYTE processPath_wstr[0x822];
+        DWORD cbdata = 0x820;
+        DWORD type = 0;
+
+        memset(str_buf, 0, 70); // clean the buffer
+        if (!MultiByteToWideChar(0xfde9, 0, "SteamClientDll64", -1, (LPWSTR)str_buf, 17)) {
+            RegCloseKey(proc_key);
+            return false;
+        }
+        if (RegQueryValueExW(proc_key, (LPWSTR)str_buf, 0, &type, processPath_wstr, &cbdata)) {
+            RegCloseKey(proc_key);
+            return false;
+        }
+        RegCloseKey(proc_key);
+
+        // manually terminate wstring
+        processPath_wstr[cbdata] = 0;
+        processPath_wstr[cbdata + 1] = 0;
+        if (!WideCharToMultiByte(0xfde9, 0, (LPCWSTR)processPath_wstr, -1, processPath, 0x410, 0, 0))
+            return false;
+
+        // alternative method to get filename if that failed (pretty sure this cant work with our setup)
+        if (!processPath[0]) {
+            WCHAR alt_proc_path[0x103];
+            alt_proc_path[0] = L'\0';
+            if (!GetModuleFileNameW(GetModuleHandleA("steamclient64.dll"), alt_proc_path, 0x104) < 0x104)
+                return false;
+            if (!WideCharToMultiByte(0xfde9, 0, alt_proc_path, -1, processPath, 0x410, 0, 0))
+                return false;
+        }
+    }
+
+    // copy over path to output and null terminate
+    if (out_buf && out_buf_size) {
+        auto i = 0;
+        auto last_pos = 0;
+        while (i < out_buf_size) {
+            last_pos = i;
+            out_buf[i] = processPath[i];
+            if (!processPath[i]) break;
+            i++;
+        }
+        out_buf[last_pos] = 0;
+    }
+    return true;
+    // none of this seems to be relevant
+    //uVar7 = 0xffffffffffffffff;
+    //do {
+    //    length = uVar7 + 1;
+    //    lVar10 = uVar7 + 1;
+    //    uVar7 = length;
+    //} while (processPath[lVar10] != '\0');
+    //if (0x40f < length) {
+    //    length = 0x40f;
+    //}
+    //steam_memcpy(&DAT_steam_install_path, processPath, length);
+    //(&DAT_steam_install_path)[length] = 0;
+    //lVar10 = -1;
+    //do {
+    //    lVar9 = lVar10 + 1;
+    //    pcVar1 = &DAT_13b445371 + lVar10;
+    //    lVar10 = lVar9;
+    //} while (*pcVar1 != '\0');
+    //iVar3 = (int)lVar9 + -1;
+    //if (0 < iVar3) {
+    //    lVar10 = (longlong)iVar3;
+    //    do {
+    //        if (((&DAT_steam_install_path)[lVar10] == '\\') || ((&DAT_steam_install_path)[lVar10] == '/')) break;
+    //        iVar3 += -1;
+    //        lVar10 += -1;
+    //    } while (0 < lVar10);
+    //    (&DAT_steam_install_path)[iVar3] = 0;
+    //}
+    //return bVar11;
 }
 
 INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefined zero, const char* SteamClient021, char* error_output_buffer){
@@ -141,7 +283,7 @@ INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefi
         //OutputDebugStringA("[S_API] SteamAPI_Init(): SteamAPI_IsSteamRunning() did not locate a running instance of Steam.\n");
         goto init_steam_client_fail;
     }
-    if (install_path_str_ptr == 0) {
+    if (!install_path_str_ptr) {
         // "Could not determine Steam client install directory."
         goto init_steam_client_fail;
     }
@@ -204,8 +346,7 @@ init_steam_client_fail:
     return 0;
 }
 
-undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersions, char* error_output_buffer)
-{
+undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersions, char* error_output_buffer){
     char cVar1;
     undefined auVar2[16];
     uint app_id;
@@ -404,8 +545,7 @@ ulonglong SteamInternal_SteamAPI_Init(const char* pszInternalCheckInterfaceVersi
 }
 
 
-int main()
-{
+int main(){
     const char* pszInternalCheckInterfaceVersions =
         STEAMUTILS_INTERFACE_VERSION "\0"
         STEAMNETWORKINGUTILS_INTERFACE_VERSION "\0"
