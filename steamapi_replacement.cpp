@@ -9,8 +9,11 @@
 #include <cstdio>
 
 #include <Libloaderapi.h>
-
 #include <Processenv.h>
+#include <winreg.h>
+#include <stringapiset.h>
+#include <processthreadsapi.h>
+#include <handleapi.h>
 
 using namespace std;
 namespace SteamReplace {
@@ -20,7 +23,7 @@ typedef unsigned long ulonglong;
 typedef unsigned long __uint64;
 typedef long longlong;
 typedef unsigned int uint;
-typedef int DWORD;
+//typedef int DWORD;
 typedef char CHAR;
 
 typedef unsigned long  undefined8;
@@ -44,6 +47,59 @@ static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
 static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static uint _DAT_register_callback_mode_manual;
+
+HKEY check_HKEY(const char* comp){ // seems like a bit a pointless function, but we'll keep it for now
+    if (!strcmp(comp, "HKEY_CLASSES_ROOT")
+    ||  !strcmp(comp, "HKCR"))
+        return (HKEY)0xffffffff80000000;
+
+    if (!strcmp(comp, "HKEY_CURRENT_USER")
+    ||  !strcmp(comp, "HKCU"))
+        return (HKEY)0xffffffff80000001;
+
+    if (!strcmp(comp, "HKEY_LOCAL_MACHINE")
+    ||  !strcmp(comp, "HKLM"))
+        return (HKEY)0xffffffff80000002;
+    return 0;
+}
+
+bool SteamAPI_IsSteamRunning(){
+    DWORD dwProcessId = 0;
+    DWORD exit_code = 0;
+    DWORD cbdata = 4;
+    DWORD type = 0;
+    HKEY proc_key = 0;
+
+    char string_buffer[70] = {0}; // added 2 extra bytes at the end
+    LPWSTR str_buf = (LPWSTR)string_buffer;
+
+    if (!MultiByteToWideChar(0xfde9, 0, "Software\\Valve\\Steam\\ActiveProcess", -1, str_buf, 35))
+        return false;
+    if (RegOpenKeyExW(check_HKEY("HKCU"), str_buf, 0, 0x20219, &proc_key))
+        return false;
+
+    memset(string_buffer, 0, 70); // clean the buffer
+    if (!MultiByteToWideChar(0xfde9, 0, "pid", -1, str_buf, 4)){
+        RegCloseKey(proc_key);
+        return false;}
+    if (RegQueryValueExW(proc_key, str_buf, 0, &type, (LPBYTE)&dwProcessId, &cbdata)) {
+        RegCloseKey(proc_key);
+        return false;}
+    RegCloseKey(proc_key);
+    
+    HANDLE hProcess = OpenProcess(0x400, 0, dwProcessId);
+    if (!hProcess)
+        return false;
+
+    if ((GetExitCodeProcess(hProcess, &exit_code))
+    && (exit_code == STILL_ACTIVE)) {
+        CloseHandle(hProcess);
+        return true;
+    }
+
+    CloseHandle(hProcess);
+    return false;
+}
 
 INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefined zero, const char* SteamClient021, char* error_output_buffer){
     //undefined auVar1[16];
@@ -316,7 +372,7 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
         
     
 return_failure:
-    ; DOODY;  SteamAPI_Shutdown();
+    SteamReplace::SteamAPI_Shutdown();
     return shutdown_Code;
 }
 
