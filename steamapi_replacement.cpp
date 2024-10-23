@@ -14,8 +14,11 @@
 #include <stringapiset.h>
 #include <processthreadsapi.h>
 #include <handleapi.h>
+#include <thread>
 
 using namespace std;
+
+
 namespace SteamReplace {
 
 
@@ -34,6 +37,7 @@ typedef unsigned char  undefined;
 // func typedefs
 typedef void* (*CreateInterface)(const char* pName, int* pReturnCode);
 typedef void* (*ReleaseThreadLocalMemory)(bool thread_exit);
+typedef bool  (*Steam_IsKnownInterface)(const char* str);
 
 
 static ISteamClient* DAT_ISteamClient_ptr;
@@ -47,6 +51,119 @@ static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
 static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static uint _DAT_register_callback_mode_manual;
+
+
+namespace Threaded {
+    static uint DAT_tls_header;
+    static steam_thread* DAT_tls_struct;
+    static steam_thread* DAT_tls_struct2;
+    static steam_thread* DAT_tls_struct_cpy;
+    static uint _DAT_register_callback_mode_manual;
+    static uint _DAT_register_callback_mode_manual;
+    static uint _DAT_register_callback_mode_manual;
+    static uint _DAT_register_callback_mode_manual;
+
+class steam_thread {
+
+};
+steam_thread** FUN_ISteam_thread(void){
+    longlong unaff_GS_OFFSET;
+
+    if (*(int*)(*(longlong*)(*(longlong*)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8) + 4) < (int)DAT_tls_header) {
+        _Init_thread_header(&DAT_tls_header);
+        if ((int)DAT_tls_header == -1) {
+            PTR_tls_struct = (steam_thread*)new char[0x30];
+            PTR_tls_struct->self_ptr1 = PTR_tls_struct;
+            PTR_tls_struct->self_ptr2 = PTR_tls_struct;
+            PTR_tls_struct->self_ptr3 = PTR_tls_struct;
+            *(undefined2*)&PTR_tls_struct->flags = 0x101;
+            DAT_tls_struct_cpy = 0;
+            DAT_tls_has_functable = 0;
+            DAT_tls_dat3 = 0;
+            DAT_tls_dat4 = 0;
+            DAT_tls_dat5 = 0;
+            DAT_tls_ISteam_functable = (undefined*)&PTR_SteamAPI_ISteam_functable_13b4287f0;
+            DAT_tls_dat6 = 0;
+            DAT_tls_dat7 = 0;
+            DAT_tls_dat8 = 0;
+            DAT_tls_has_functable2 = 2;
+            DAT_tls_ISteam_functable2 = (undefined*)&PTR_SteamAPI_ISteam_functable_13b428818;
+            DAT_tls_struct2 = (astruct*)0x0;
+            DAT_tls_dat11 = 0;
+            DAT_tls_struct2 = (astruct*)operator_new(0x30);
+            DAT_tls_struct2->self_ptr1 = DAT_tls_struct2;
+            DAT_tls_struct2->self_ptr2 = DAT_tls_struct2;
+            DAT_tls_struct2->self_ptr3 = DAT_tls_struct2;
+            *(undefined2*)&DAT_tls_struct2->flags = 0x101;
+            DAT_tls_is_active = 1;
+            DAT_tls_dat13 = 0;
+            DAT_tls_dat14 = 0;
+            DAT_tls_struct_cpy = PTR_tls_struct;
+            atexit(tls_exit);
+            _Init_thread_footer(&DAT_tls_header);
+            return &PTR_tls_struct;
+        }
+    }
+    return &PTR_tls_struct;
+}
+
+int SteamAPI_CheckCallbackRegistered_t_func(int param_1){
+    char cVar1;
+    steam_thread* paVar2;
+    steam_thread* paVar3;
+    steam_thread** ppaVar4;
+    steam_thread* paVar5;
+    int iVar6;
+    steam_thread* paVar7;
+
+    ppaVar4 = FUN_ISteam_thread();
+    paVar2 = *ppaVar4;
+    cVar1 = paVar2->next_thread->flag_is_child;
+    paVar3 = paVar2;
+    paVar5 = paVar2->next_thread;
+    while (cVar1 == '\0') {
+        if (*(int*)&paVar5->field_0x20 < param_1) {
+            paVar7 = (astruct*)paVar5->self_ptr3;
+            paVar5 = paVar3;
+        }
+        else {
+            paVar7 = (astruct*)paVar5->self_ptr1;
+        }
+        paVar3 = paVar5;
+        paVar5 = paVar7;
+        cVar1 = paVar7->flag_is_child;
+    }
+    iVar6 = 0;
+    if ((paVar3->flag_is_child == '\0') && (iVar6 = 0, *(int*)&paVar3->field_0x20 <= param_1)) {
+        while ((paVar3 != paVar2 && (*(int*)&paVar3->field_0x20 == param_1))) {
+            paVar5 = (astruct*)paVar3->self_ptr3;
+            iVar6 += 1;
+            if (paVar5->flag_is_child == '\0') {
+                cVar1 = ((astruct*)paVar5->self_ptr1)->flag_is_child;
+                paVar3 = paVar5;
+                paVar5 = (astruct*)paVar5->self_ptr1;
+                while (cVar1 == '\0') {
+                    cVar1 = ((astruct*)paVar5->self_ptr1)->flag_is_child;
+                    paVar3 = paVar5;
+                    paVar5 = (astruct*)paVar5->self_ptr1;
+                }
+            }
+            else {
+                cVar1 = paVar3->next_thread->flag_is_child;
+                paVar7 = paVar3->next_thread;
+                paVar5 = paVar3;
+                while ((paVar3 = paVar7, cVar1 == '\0' && (paVar5 == (astruct*)paVar3->self_ptr3))) {
+                    cVar1 = paVar3->next_thread->flag_is_child;
+                    paVar7 = paVar3->next_thread;
+                    paVar5 = paVar3;
+                }
+            }
+        }
+    }
+    return iVar6;
+}
+}
+
 
 HKEY check_HKEY(const char* comp){ // seems like a bit a pointless function, but we'll keep it for now
     if (!strcmp(comp, "HKEY_CLASSES_ROOT")
@@ -253,7 +370,7 @@ INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefi
     LPWSTR steamclient_path_wstr;
     CreateInterface create_interface_func;
     INT_PTR resulting_interface;
-    int path_chars;
+    int path_chars = 0;
     CHAR steam_install_path[0x410] = { 0 };
     //char acStack_427[1039];
     //CHAR error_output[1040];
@@ -284,7 +401,6 @@ INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefi
         goto init_steam_client_fail;
     
     // count chars in string (including the null terminator)
-    path_chars = 0;
     while (steam_install_path[path_chars++]);
 
     steamclient_path_wstr = (LPWSTR)new char[path_chars*2];
@@ -336,26 +452,25 @@ init_steam_client_fail:
 }
 
 undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersions, char* error_output_buffer){
-    char cVar1;
-    undefined auVar2[16];
+    //undefined auVar2[16];
     uint app_id;
     ulonglong game_id;
-    DWORD result;
-    FARPROC pFVar4;
-    INT_PTR IVar5;
-    longlong lVar6;
+    //DWORD result;
+    Steam_IsKnownInterface interface_check_func;
+    //INT_PTR IVar5;
+    //longlong lVar6;
     ISteamUtils* steam_utils;
     ISteamUser* steam_user;
-    longlong lVar7;
-    __uint64 _Var8;
-    LPCWSTR lpWideCharStr;
-    CSteamID user_id;
+    //longlong lVar7;
+    //__uint64 _Var8;
+    //LPCWSTR lpWideCharStr;
+    //CSteamID user_id;
     undefined4 shutdown_Code;
-    ulonglong local_res20;
-    CHAR string_buf32[32];
-    CHAR local_438;
-    char acStack_437[1039];
-    HMODULE temp_module;
+    //ulonglong local_res20;
+    //CHAR string_buf32[32];
+    //CHAR local_438;
+    //char acStack_437[1039];
+    //HMODULE temp_module;
 
     if (!DAT_ISteamClient_ptr) return 0;
 
@@ -382,28 +497,21 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
 
     // verify interface versions
     if (pszInternalCheckInterfaceVersions != 0) {
-        temp_module = DAT_steamclient_hmodule;
+        //temp_module = DAT_steamclient_hmodule;
         //if (DAT_steamclient_ALT_module != (HMODULE)0x0) {
         //    temp_module = DAT_steamclient_ALT_module;
         //}
-        pFVar4 = GetProcAddress(temp_module, "Steam_IsKnownInterface");
-        if (pFVar4 != (FARPROC)0x0) {
-            cVar1 = *pszInternalCheckInterfaceVersions;
-            while (cVar1) {
-                IVar5 = (*pFVar4)(pszInternalCheckInterfaceVersions);
-                if ((char)IVar5 == '\0') {
+        interface_check_func = (Steam_IsKnownInterface)GetProcAddress(DAT_steamclient_hmodule, "Steam_IsKnownInterface");
+        if (interface_check_func) {
+            while (*pszInternalCheckInterfaceVersions) {
+                if (!(*interface_check_func)(pszInternalCheckInterfaceVersions)) {
                     //steam_format_error(error_output_buffer, "No %s", pszInternalCheckInterfaceVersions);
                     //steam_missing_feature(IPC_pipe, pszInternalCheckInterfaceVersions);
                     shutdown_Code = 3;
                     goto return_failure;
                 }
-                lVar6 = -1;
-                do {
-                    lVar7 = lVar6;
-                    lVar6 = lVar7 + 1;
-                } while (pszInternalCheckInterfaceVersions[lVar6] != '\0');
-                pszInternalCheckInterfaceVersions = pszInternalCheckInterfaceVersions + lVar7 + 2;
-                cVar1 = *pszInternalCheckInterfaceVersions;
+                // iterate string till we reach the next null terminator
+                while (*pszInternalCheckInterfaceVersions++);
             }
         }
     }
@@ -412,6 +520,7 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
     
     steam_utils = (ISteamUtils*)DAT_ISteamClient_ptr->GetISteamGenericInterface(0, DAT_steam_IPC_pipe, "SteamUtils010");
     if (!steam_utils) {
+        goto return_failure;
         //steam_format_error(error_output_buffer, "No %s", "SteamUtils010");
         // IPC_pipe = DAT_steam_IPC_pipe;
         //temp_module = DAT_steamclient_hmodule;
@@ -448,19 +557,19 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
     }
     if (!GetEnvironmentVariableA("SteamAppId", (LPSTR)0x0, 0)) {
         char str_buf[32] = { 0 }; // steam had a nice optimization for this actually, only set the first char and last char to \0
-        sprintf(str_buf, "%u", app_id, "SteamUser023");
-        SetEnvironmentVariableA("SteamAppId", string_buf32);
+        sprintf(str_buf, "%u", app_id, "SteamUser023");// WARNING: bad code -> fails
+        SetEnvironmentVariableA("SteamAppId", str_buf);
     }
     if (!GetEnvironmentVariableA("SteamGameId", (LPSTR)0x0, 0)) {
         char str_buf[32] = { 0 };
         sprintf(str_buf, "%llu", game_id, "SteamUser023");
-        SetEnvironmentVariableA("SteamGameId", string_buf32);
-        SetEnvironmentVariableA("SteamOverlayGameId", string_buf32);
+        SetEnvironmentVariableA("SteamGameId", str_buf);
+        SetEnvironmentVariableA("SteamOverlayGameId", str_buf);
     }
     if (!GetEnvironmentVariableA("SteamOverlayGameId", (LPSTR)0x0, 0)) {
         char str_buf[32] = { 0 };
         sprintf(str_buf, "%llu", game_id, "SteamUser023");
-        SetEnvironmentVariableA("SteamOverlayGameId", string_buf32);
+        SetEnvironmentVariableA("SteamOverlayGameId", str_buf);
     }
     //SteamAPI_SetBreakpadAppID(app_id);
     steam_config_callbacks(DAT_steamclient_hmodule);
@@ -565,6 +674,4 @@ int main(){
         "\0";
     SteamReplace::SteamInternal_SteamAPI_Init(pszInternalCheckInterfaceVersions);
 }
-
-
 
