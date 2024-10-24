@@ -39,7 +39,16 @@ typedef void* (*CreateInterface)(const char* pName, int* pReturnCode);
 typedef void* (*ReleaseThreadLocalMemory)(bool thread_exit);
 typedef bool  (*Steam_IsKnownInterface)(const char* str);
 
+typedef bool (*Steam_BGetCallback    )(HSteamPipe hSteamPipe, CallbackMsg_t* pCallbackMsg);
+typedef bool (*Steam_FreeLastCallback)(HSteamPipe hSteamPipe);
+typedef bool (*Steam_GetAPICallResult)(HSteamPipe hSteamPipe, SteamAPICall_t hSteamAPICall, void* pCallback, int cubCallback, int iCallbackExpected, bool* pbFailed);
 
+static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
+static Steam_BGetCallback     DAT_steam_BGetCallback_func;
+static Steam_FreeLastCallback DAT_steam_FreeLastCallback_func;
+static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
+
+// statics
 static ISteamClient* DAT_ISteamClient_ptr;
 static long* DAT_steam_client_interface17;
 static uint DAT_modules_retrieved_count;
@@ -49,122 +58,188 @@ static HMODULE DAT_steamclient_hmodule;
 static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
-static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static uint _DAT_register_callback_mode_manual;
 
 
+
 namespace Threaded {
-    static uint DAT_tls_header;
-    static steam_thread* DAT_tls_struct;
-    static steam_thread* DAT_tls_struct2;
-    static steam_thread* DAT_tls_struct_cpy;
-    static uint _DAT_register_callback_mode_manual;
-    static uint _DAT_register_callback_mode_manual;
-    static uint _DAT_register_callback_mode_manual;
-    static uint _DAT_register_callback_mode_manual;
-
-class steam_thread {
-
+class ISteamObjMap { // size: 0x30
+public:
+    ISteamObjMap* prev_obj;
+    ISteamObjMap* self_ptr2;
+    ISteamObjMap* next_obj;
+    char flag1;
+    char flag2;
+    USHORT unk1;
+    uint unk2;
+    int index_thing;
+    uint unk3;
+    CCallbackBase* callback;
 };
-steam_thread** FUN_ISteam_thread(void){
-    longlong unaff_GS_OFFSET;
+class ISteamObj { // size: 0x80
+public:
+    ISteamObjMap* map_struct;
+    undefined8 field1_0x8;
+        
+    ISteamObj* self_ptr;
+    void* unk_ptr1;
+    void* unk_ptr2;
 
-    if (*(int*)(*(longlong*)(*(longlong*)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8) + 4) < (int)DAT_tls_header) {
-        _Init_thread_header(&DAT_tls_header);
-        if ((int)DAT_tls_header == -1) {
-            PTR_tls_struct = (steam_thread*)new char[0x30];
-            PTR_tls_struct->self_ptr1 = PTR_tls_struct;
-            PTR_tls_struct->self_ptr2 = PTR_tls_struct;
-            PTR_tls_struct->self_ptr3 = PTR_tls_struct;
-            *(undefined2*)&PTR_tls_struct->flags = 0x101;
-            DAT_tls_struct_cpy = 0;
-            DAT_tls_has_functable = 0;
-            DAT_tls_dat3 = 0;
-            DAT_tls_dat4 = 0;
-            DAT_tls_dat5 = 0;
-            DAT_tls_ISteam_functable = (undefined*)&PTR_SteamAPI_ISteam_functable_13b4287f0;
-            DAT_tls_dat6 = 0;
-            DAT_tls_dat7 = 0;
-            DAT_tls_dat8 = 0;
-            DAT_tls_has_functable2 = 2;
-            DAT_tls_ISteam_functable2 = (undefined*)&PTR_SteamAPI_ISteam_functable_13b428818;
-            DAT_tls_struct2 = (astruct*)0x0;
-            DAT_tls_dat11 = 0;
-            DAT_tls_struct2 = (astruct*)operator_new(0x30);
-            DAT_tls_struct2->self_ptr1 = DAT_tls_struct2;
-            DAT_tls_struct2->self_ptr2 = DAT_tls_struct2;
-            DAT_tls_struct2->self_ptr3 = DAT_tls_struct2;
-            *(undefined2*)&DAT_tls_struct2->flags = 0x101;
-            DAT_tls_is_active = 1;
-            DAT_tls_dat13 = 0;
-            DAT_tls_dat14 = 0;
-            DAT_tls_struct_cpy = PTR_tls_struct;
-            atexit(tls_exit);
-            _Init_thread_footer(&DAT_tls_header);
-            return &PTR_tls_struct;
-        }
+    CCallbackBase* callback1;
+    uint has_callback1;
+    uint unk_int3;
+    void* unk_ptr4;
+    void* unk_ptr5;
+
+    CCallbackBase* callback2;
+    uint has_callback2;
+    uint unk_int6;
+    void* unk_ptr7;
+    void* unk_ptr8;
+
+    ISteamObjMap* map_struct2;
+    void* unk_ptr9;
+
+    longlong tls_header;
+};
+
+static ISteamObj callbacks;
+static uint DAT_tls_is_active = 0;
+
+// FINISHED
+void cleanup_child_thread(ISteamObjMap* curr_obj){
+    while (!curr_obj->flag2) {
+        cleanup_child_thread(curr_obj->next_obj);
+        ISteamObjMap* pIVar2 = curr_obj->prev_obj;
+        delete curr_obj;
+        curr_obj = pIVar2;
     }
-    return &PTR_tls_struct;
 }
 
-int SteamAPI_CheckCallbackRegistered_t_func(int param_1){
-    char cVar1;
-    steam_thread* paVar2;
-    steam_thread* paVar3;
-    steam_thread** ppaVar4;
-    steam_thread* paVar5;
-    int iVar6;
-    steam_thread* paVar7;
+// 
+void tls_exit(void){
+    DAT_tls_is_active = 0;
 
-    ppaVar4 = FUN_ISteam_thread();
-    paVar2 = *ppaVar4;
-    cVar1 = paVar2->next_thread->flag_is_child;
-    paVar3 = paVar2;
-    paVar5 = paVar2->next_thread;
-    while (cVar1 == '\0') {
-        if (*(int*)&paVar5->field_0x20 < param_1) {
-            paVar7 = (astruct*)paVar5->self_ptr3;
-            paVar5 = paVar3;
+    cleanup_child_thread(callbacks.map_struct2->self_ptr2);
+    delete callbacks.map_struct2;
+
+    callbacks.callback2 = PTR_SteamAPI_ISteam_functable_13b4287c8;
+    if ((callbacks.has_callback2 & 1) != 0)
+        SteamReplace::SteamAPI_UnregisterCallback(callbacks.callback2);
+ 
+    callbacks.callback1 = PTR_SteamAPI_ISteam_functable_13b4287c8;
+    if ((callbacks.has_callback1 & 1) != 0)
+        SteamReplace::SteamAPI_UnregisterCallback(callbacks.callback1);
+    
+    cleanup_child_thread(callbacks.map_struct->self_ptr2);
+    delete callbacks.map_struct;
+}
+
+// MOSTLY FINISHED???
+ISteamObj* FUN_ISteam_thread(void){
+    //longlong unaff_GS_OFFSET;
+
+    //if (*(int*)(*(longlong*)(*(longlong*)(unaff_GS_OFFSET + 0x58) + (ulonglong)_tls_index * 8) + 4) < (int)callbacks.tls_header) {
+        //_Init_thread_header(callbacks.tls_header);
+        if ((int)callbacks.tls_header == -1) {
+            callbacks.map_struct = new(ISteamObjMap);
+            callbacks.map_struct->prev_obj = callbacks.map_struct;
+            callbacks.map_struct->self_ptr2 = callbacks.map_struct;
+            callbacks.map_struct->next_obj = callbacks.map_struct;
+            callbacks.map_struct->flag1 = 1;
+            callbacks.map_struct->flag2 = 1;
+            callbacks.self_ptr = 0;
+            callbacks.has_callback1 = 0;
+            callbacks.unk_int3 = 0;
+            callbacks.unk_ptr4 = 0;
+            callbacks.unk_ptr5 = 0;
+            //callbacks.callback1 = &PTR_SteamAPI_ISteam_functable_1;
+            callbacks.unk_int6 = 0;
+            callbacks.unk_ptr7 = 0;
+            callbacks.unk_ptr8 = 0;
+            callbacks.has_callback2 = 2;
+            //callbacks.callback2 = &PTR_SteamAPI_ISteam_functable_2;
+            callbacks.map_struct2 = 0;
+            callbacks.unk_ptr9 = 0;
+            callbacks.map_struct2 = new(ISteamObjMap);
+            callbacks.map_struct2->prev_obj = callbacks.map_struct2;
+            callbacks.map_struct2->self_ptr2 = callbacks.map_struct2;
+            callbacks.map_struct2->next_obj = callbacks.map_struct2;
+            callbacks.map_struct2->flag1 = 1;
+            callbacks.map_struct2->flag2 = 1;
+            DAT_tls_is_active = 1;
+            callbacks.unk_ptr2 = (undefined*)0x0;
+            callbacks.unk_ptr1 = (undefined*)0x0;
+            callbacks.self_ptr = (ISteamObj*)callbacks.map_struct;
+            atexit(tls_exit);
+            //_Init_thread_footer(callbacks.tls_header);
+            return &callbacks;
         }
-        else {
-            paVar7 = (astruct*)paVar5->self_ptr1;
-        }
-        paVar3 = paVar5;
-        paVar5 = paVar7;
-        cVar1 = paVar7->flag_is_child;
+    //}
+    return &callbacks;
+}
+
+// 
+int SteamAPI_CheckCallbackRegistered_t_func(int iCallbackNum){
+    char cVar1;
+    int iVar6 = 0;
+    ISteamObjMap* callbacks_root;
+    ISteamObjMap* pIVar3;
+    ISteamObjMap* pIVar5;
+    ISteamObjMap* pIVar7;
+
+    callbacks_root = FUN_ISteam_thread()->map_struct;
+
+    pIVar3 = callbacks_root;
+    pIVar5 = callbacks_root->self_ptr2;
+
+    while (!pIVar5->flag2) {
+        if (pIVar5->index_thing < iCallbackNum) {
+            pIVar7 = pIVar5->next_obj;
+            pIVar5 = pIVar3;
+        }else
+            pIVar7 = pIVar5->prev_obj;
+       
+        pIVar3 = pIVar5;
+        pIVar5 = pIVar7;
     }
-    iVar6 = 0;
-    if ((paVar3->flag_is_child == '\0') && (iVar6 = 0, *(int*)&paVar3->field_0x20 <= param_1)) {
-        while ((paVar3 != paVar2 && (*(int*)&paVar3->field_0x20 == param_1))) {
-            paVar5 = (astruct*)paVar3->self_ptr3;
+
+    if ((pIVar3->flag2 == 0) 
+    && ( pIVar3->index_thing <= iCallbackNum)) {
+        while ((pIVar3 != callbacks_root && (pIVar3->index_thing == iCallbackNum))) {
+            pIVar5 = pIVar3->next_obj;
             iVar6 += 1;
-            if (paVar5->flag_is_child == '\0') {
-                cVar1 = ((astruct*)paVar5->self_ptr1)->flag_is_child;
-                paVar3 = paVar5;
-                paVar5 = (astruct*)paVar5->self_ptr1;
-                while (cVar1 == '\0') {
-                    cVar1 = ((astruct*)paVar5->self_ptr1)->flag_is_child;
-                    paVar3 = paVar5;
-                    paVar5 = (astruct*)paVar5->self_ptr1;
+            if (!pIVar5->flag2) {
+                cVar1 = pIVar5->prev_obj->flag2;
+                pIVar3 = pIVar5;
+                pIVar5 = pIVar5->prev_obj;
+                while (!cVar1) {
+                    cVar1 = pIVar5->prev_obj->flag2;
+                    pIVar3 = pIVar5;
+                    pIVar5 = pIVar5->prev_obj;
                 }
             }
             else {
-                cVar1 = paVar3->next_thread->flag_is_child;
-                paVar7 = paVar3->next_thread;
-                paVar5 = paVar3;
-                while ((paVar3 = paVar7, cVar1 == '\0' && (paVar5 == (astruct*)paVar3->self_ptr3))) {
-                    cVar1 = paVar3->next_thread->flag_is_child;
-                    paVar7 = paVar3->next_thread;
-                    paVar5 = paVar3;
+                cVar1 = pIVar3->self_ptr2->flag2;
+                pIVar7 = pIVar3->self_ptr2;
+                pIVar5 = pIVar3;
+                while ((pIVar3 = pIVar7, !cVar1 && (pIVar5 == pIVar3->next_obj))) {
+                    cVar1 = pIVar3->self_ptr2->flag2;
+                    pIVar7 = pIVar3->self_ptr2;
+                    pIVar5 = pIVar3;
                 }
             }
         }
     }
     return iVar6;
 }
+
+
+
 }
 
 
+// FINISHED
 HKEY check_HKEY(const char* comp){ // seems like a bit a pointless function, but we'll keep it for now
     if (!strcmp(comp, "HKEY_CLASSES_ROOT")
     ||  !strcmp(comp, "HKCR"))
@@ -180,6 +255,7 @@ HKEY check_HKEY(const char* comp){ // seems like a bit a pointless function, but
     return 0;
 }
 
+// FINISHED
 bool SteamAPI_IsSteamRunning(){
     DWORD dwProcessId = 0;
     DWORD exit_code = 0;
@@ -216,6 +292,7 @@ bool SteamAPI_IsSteamRunning(){
     return false;
 }
 
+// FINISHED 
 bool steam_write_install_path(char* out_buf, int out_buf_size){
     //char* pcVar1;
     //int iVar3;
@@ -359,6 +436,7 @@ bool steam_write_install_path(char* out_buf, int out_buf_size){
     //return bVar11;
 }
 
+// MOSTLY FINISHED!!
 INT_PTR init_steam_client(HMODULE* resulting_hmodule, char* is_anon_user, undefined zero, const char* SteamClient021, char* error_output_buffer){
     //undefined auVar1[16];
     //longlong lVar2;
@@ -451,6 +529,56 @@ init_steam_client_fail:
     return 0;
 }
 
+// FINISHED
+void steam_config_callbacks(HMODULE steamc_module){
+    Threaded::FUN_ISteam_thread();
+    DAT_steam_BGetCallback_func     = (Steam_BGetCallback)GetProcAddress(steamc_module, "Steam_BGetCallback");
+    DAT_steam_FreeLastCallback_func = (Steam_FreeLastCallback)GetProcAddress(steamc_module, "Steam_FreeLastCallback");
+    DAT_steam_GetAPICallResult_func = (Steam_GetAPICallResult)GetProcAddress(steamc_module, "Steam_GetAPICallResult");
+    return;
+}
+
+// FINISHED
+void SteamAPI_Shutdown() {
+    // 0x85e0  957  SteamAPI_Shutdown
+    //DAT_13b445870 = 0;
+    //DAT_13b445878 = 0;
+    //DAT_13b445880 = 0;
+    if (DAT_steam_IPC_pipe && DAT_steam_user)
+        DAT_ISteamClient_ptr->ReleaseUser(DAT_steam_IPC_pipe, DAT_steam_user);
+
+    DAT_steam_user = 0;
+    if (DAT_steam_IPC_pipe)
+        DAT_ISteamClient_ptr->BReleaseSteamPipe(DAT_steam_IPC_pipe);
+
+    DAT_steam_IPC_pipe = 0;
+    if (DAT_steam_alt_IPC_pipe) {
+        DAT_ISteamClient_ptr->BReleaseSteamPipe(DAT_steam_alt_IPC_pipe);
+        DAT_steam_alt_IPC_pipe = 0;
+    }
+    DAT_steamclient_ReleaseThreadLocalMemory = 0;
+    if (DAT_ISteamClient_ptr)
+        DAT_ISteamClient_ptr->BShutdownIfAllPipesClosed();
+
+    DAT_ISteamClient_ptr = 0;
+    DAT_steam_client_interface17 = 0;
+    if (DAT_steamclient_hmodule) {
+        FreeLibrary(DAT_steamclient_hmodule);
+        //DAT_13b445780 = 0;
+        //_DAT_Breakpad_SteamSendMiniDump = 0;
+        //DAT_Breakpad_SteamWriteMiniDumpSetComment = 0;
+        //if (DAT_13b445800 != '\0') {
+        //    if (DAT_steambreakpad_module != (HMODULE)0x0) {
+        //        FreeLibrary(DAT_steambreakpad_module);
+        //    }
+        //    DAT_steambreakpad_module = (HMODULE)0x0;
+        //}
+        DAT_modules_retrieved_count += 1;
+    }
+    DAT_steamclient_hmodule = 0;
+}
+
+//
 undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersions, char* error_output_buffer){
     //undefined auVar2[16];
     uint app_id;
@@ -602,7 +730,7 @@ undefined4 init_steam(char is_anon, const char* pszInternalCheckInterfaceVersion
 
 
     if (_DAT_register_callback_mode_manual < 1)
-        DAT_ISteamClient_ptr->Set_SteamAPI_CCheckCallbackRegisteredInProcess(SteamAPI_CheckCallbackRegistered_t_func);
+        DAT_ISteamClient_ptr->Set_SteamAPI_CCheckCallbackRegisteredInProcess(Threaded::SteamAPI_CheckCallbackRegistered_t_func);
     
     // minidump write steam id
     //user_id = steam_user->GetSteamID();
@@ -615,6 +743,7 @@ return_failure:
     return shutdown_Code;
 }
 
+// FINISHED
 ulonglong SteamInternal_SteamAPI_Init(const char* pszInternalCheckInterfaceVersions, char* pOutErrMsg) {
     ulonglong SteamInit_result;
     ulonglong last_char_index;
