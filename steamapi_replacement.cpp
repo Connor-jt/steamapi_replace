@@ -58,7 +58,7 @@ static HMODULE DAT_steamclient_hmodule;
 static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
-static uint _DAT_register_callback_mode_manual;
+static int _DAT_register_callback_mode_manual;
 
 
 
@@ -767,6 +767,108 @@ ulonglong SteamInternal_SteamAPI_Init(const char* pszInternalCheckInterfaceVersi
         pOutErrMsg[last_char_index] = '\0';
     }
     return SteamInit_result;
+}
+
+
+
+
+
+// SET REGISTER THING
+//
+//void SteamAPI_RegisterCallResult(void* CCallBackBase, int hAPICall){
+//    // 0x7e40  949  SteamAPI_RegisterCallResult
+//    if (0 < _DAT_register_callback_mode_manual) {
+//        // WARNING: Could not recover jumptable at 0x00013b407e50. Too many branches
+//        // WARNING: Treating indirect jump as call
+//        //OutputDebugStringA("[S_API FAIL] SteamAPI_RegisterCallResult cannot be used; manual dispatch has already been selected.\n");
+//        return;
+//    }
+//    _DAT_register_callback_mode_manual = 0xffffffff;
+//    FUN_register_callback(CCallBackBase, hAPICall);
+//    return;
+//}
+
+
+uint DAT_13b445894 = 0;
+uint DAT_13b445890 = 0;
+
+ISteamInput* DAT_SteamInput006;
+ISteamUtils* DAT_SteamUtils010;
+ISteamController* DAT_SteamController008;
+
+void Steam_RunFrames(){
+    if (!DAT_ISteamClient_ptr) return;
+    
+    // init/run steam untils
+    if (!DAT_SteamUtils010) {
+        DAT_SteamUtils010 = (ISteamUtils*)DAT_ISteamClient_ptr->GetISteamGenericInterface(0, DAT_steam_IPC_pipe, "SteamUtils010");
+        if (DAT_SteamUtils010) DAT_SteamUtils010->GetAppID();} // not sure why this is called
+    if (DAT_SteamUtils010) 
+        DAT_SteamUtils010->RunFrame();
+    
+    // init/run steam input
+    if (!DAT_SteamInput006)
+        DAT_SteamInput006 = (ISteamInput*)DAT_ISteamClient_ptr->GetISteamGenericInterface(DAT_steam_user, DAT_steam_IPC_pipe, "SteamInput006");
+    if (DAT_SteamInput006)
+        DAT_SteamInput006->RunFrame(0);
+
+    // init/run steam controller
+    if (!DAT_SteamController008)
+        DAT_SteamController008 = (ISteamController*)DAT_ISteamClient_ptr->GetISteamGenericInterface(DAT_steam_user, DAT_steam_IPC_pipe, "SteamController008");
+    if (DAT_SteamController008)
+        DAT_SteamController008->RunFrame();
+}
+
+void SteamAPI_RunCallbacks(void){
+    int iVar1;
+    bool bVar2;
+    int iVar3;
+
+    // 0x8420  953  SteamAPI_RunCallbacks
+    bVar2 = false;
+    if (DAT_steam_IPC_pipe != 0) {
+        do {
+            iVar3 = DAT_steam_IPC_pipe;
+            DAT_13b445894 = '\0';
+            //LOCK();
+            iVar1 = DAT_13b445890 + 1;
+            if (DAT_13b445890 == 0) {
+                if (_DAT_register_callback_mode_manual < 1) {
+                    _DAT_register_callback_mode_manual = -1;
+                    DAT_13b445890 = iVar1;
+                    Steam_RunFrames();
+                    FUN_13b404040(iVar3, 0);
+                    if (DAT_steam_alt_IPC_pipe != 0) {
+                        FUN_13b403d60();
+                    }
+                    bVar2 = true;
+                }
+                else {
+                    DAT_13b445890 = iVar1;
+                    //OutputDebugStringA("[S_API FAIL] Standard callback dispatch cannot be used; manual dispatch has already been selected.\n");
+                    bVar2 = true;
+                }
+            }
+            else {
+                DAT_13b445894 = '\x01';
+                DAT_13b445890 = iVar1;
+            }
+            //LOCK();
+            iVar1 = DAT_13b445890 + -1;
+        } while ((DAT_13b445890 == 1) && (DAT_13b445890 = iVar1, DAT_13b445894 != '\0'));
+        DAT_13b445890 = iVar1;
+        if (bVar2) {
+            return;
+        }
+    }
+    if (DAT_steamclient_ReleaseThreadLocalMemory != 0) {
+        (*DAT_steamclient_ReleaseThreadLocalMemory)(0);
+    }
+    if (DAT_steam_alt_IPC_pipe == 0) {
+        return;
+    }
+    FUN_13b403d60();
+    return;
 }
 
 }
