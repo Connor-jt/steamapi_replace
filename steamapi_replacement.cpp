@@ -22,14 +22,6 @@ using namespace std;
 
 namespace SteamReplace {
 
-
-typedef unsigned long ulonglong;
-typedef unsigned long __uint64;
-typedef long longlong;
-typedef unsigned int uint;
-//typedef int DWORD;
-typedef char CHAR;
-
 typedef unsigned long  undefined8;
 typedef unsigned int   undefined4;
 typedef unsigned short undefined2;
@@ -52,112 +44,110 @@ static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
 // statics
 static ISteamClient* DAT_ISteamClient_ptr;
 static ISteamUser* DAT_ISteamUser_ptr;
-static long* DAT_steam_client_interface17; // MARKED FOR REMOVAL!!
-static char DAT_is_anon_user;
+//static long* DAT_steam_client_interface17; // MARKED FOR REMOVAL!!
 static HMODULE DAT_steamclient_hmodule;
-//static HMODULE DAT_steamclient_ALT_module;
 static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
 
 
 
-namespace Threaded {
-class ISteamObjMap { // size: 0x30
-public:
-    ISteamObjMap* prev_obj;
-    ISteamObjMap* self_ptr2;
-    ISteamObjMap* next_obj;
-    char flag1;
-    char flag2;
-    USHORT unk1;
-    uint unk2;
-    int cb_index;
-    uint unk3;
-    CCallbackBase* callback;
-};
-class ISteamObj { // size: 0x80
-public:
-    ISteamObjMap* map_struct;
-    undefined8 field1_0x8;
-        
-    ISteamObjMap* active_map_struct;
-    HSteamUser userid;
-    HSteamPipe ipc_pipe;
-    void* unk_ptr2;
-
-    CCallbackBase* callback1;
-    uint has_callback1;
-    uint unk_int3;
-    void* unk_ptr4;
-    void* unk_ptr5;
-
-    CCallbackBase* callback2;
-    uint has_callback2;
-    uint unk_int6;
-    void* unk_ptr7;
-    void* unk_ptr8;
-
-    ISteamObjMap* map_struct2;
-    void* unk_ptr9;
-
-    longlong tls_header;
-};
-// 
-//int SteamAPI_CheckCallbackRegistered_t_func(int iCallbackNum){
-//    char cVar1;
-//    int iVar6 = 0;
-//    ISteamObjMap* callbacks_root;
-//    ISteamObjMap* pIVar3;
-//    ISteamObjMap* pIVar5;
-//    ISteamObjMap* pIVar7;
+//namespace Threaded {
+//class ISteamObjMap { // size: 0x30
+//public:
+//    ISteamObjMap* prev_obj;
+//    ISteamObjMap* self_ptr2;
+//    ISteamObjMap* next_obj;
+//    char flag1;
+//    char flag2;
+//    USHORT unk1;
+//    uint unk2;
+//    int cb_index;
+//    uint unk3;
+//    CCallbackBase* callback;
+//};
+//class ISteamObj { // size: 0x80
+//public:
+//    ISteamObjMap* map_struct;
+//    undefined8 field1_0x8;
+//        
+//    ISteamObjMap* active_map_struct;
+//    HSteamUser userid;
+//    HSteamPipe ipc_pipe;
+//    void* unk_ptr2;
 //
-//    callbacks_root = FUN_ISteam_thread()->map_struct;
+//    CCallbackBase* callback1;
+//    uint has_callback1;
+//    uint unk_int3;
+//    void* unk_ptr4;
+//    void* unk_ptr5;
 //
-//    pIVar3 = callbacks_root;
-//    pIVar5 = callbacks_root->self_ptr2;
+//    CCallbackBase* callback2;
+//    uint has_callback2;
+//    uint unk_int6;
+//    void* unk_ptr7;
+//    void* unk_ptr8;
 //
-//    while (!pIVar5->flag2) {
-//        if (pIVar5->cb_index < iCallbackNum) {
-//            pIVar7 = pIVar5->next_obj;
-//            pIVar5 = pIVar3;
-//        }else
-//            pIVar7 = pIVar5->prev_obj;
-//       
-//        pIVar3 = pIVar5;
-//        pIVar5 = pIVar7;
-//    }
+//    ISteamObjMap* map_struct2;
+//    void* unk_ptr9;
 //
-//    if ((pIVar3->flag2 == 0) 
-//    && ( pIVar3->cb_index <= iCallbackNum)) {
-//        while ((pIVar3 != callbacks_root && (pIVar3->cb_index == iCallbackNum))) {
-//            pIVar5 = pIVar3->next_obj;
-//            iVar6 += 1;
-//            if (!pIVar5->flag2) {
-//                cVar1 = pIVar5->prev_obj->flag2;
-//                pIVar3 = pIVar5;
-//                pIVar5 = pIVar5->prev_obj;
-//                while (!cVar1) {
-//                    cVar1 = pIVar5->prev_obj->flag2;
-//                    pIVar3 = pIVar5;
-//                    pIVar5 = pIVar5->prev_obj;
-//                }
-//            }
-//            else {
-//                cVar1 = pIVar3->self_ptr2->flag2;
-//                pIVar7 = pIVar3->self_ptr2;
-//                pIVar5 = pIVar3;
-//                while ((pIVar3 = pIVar7, !cVar1 && (pIVar5 == pIVar3->next_obj))) {
-//                    cVar1 = pIVar3->self_ptr2->flag2;
-//                    pIVar7 = pIVar3->self_ptr2;
-//                    pIVar5 = pIVar3;
-//                }
-//            }
-//        }
-//    }
-//    return iVar6;
+//    longlong tls_header;
+//};
+//// 
+////int SteamAPI_CheckCallbackRegistered_t_func(int iCallbackNum){
+////    char cVar1;
+////    int iVar6 = 0;
+////    ISteamObjMap* callbacks_root;
+////    ISteamObjMap* pIVar3;
+////    ISteamObjMap* pIVar5;
+////    ISteamObjMap* pIVar7;
+////
+////    callbacks_root = FUN_ISteam_thread()->map_struct;
+////
+////    pIVar3 = callbacks_root;
+////    pIVar5 = callbacks_root->self_ptr2;
+////
+////    while (!pIVar5->flag2) {
+////        if (pIVar5->cb_index < iCallbackNum) {
+////            pIVar7 = pIVar5->next_obj;
+////            pIVar5 = pIVar3;
+////        }else
+////            pIVar7 = pIVar5->prev_obj;
+////       
+////        pIVar3 = pIVar5;
+////        pIVar5 = pIVar7;
+////    }
+////
+////    if ((pIVar3->flag2 == 0) 
+////    && ( pIVar3->cb_index <= iCallbackNum)) {
+////        while ((pIVar3 != callbacks_root && (pIVar3->cb_index == iCallbackNum))) {
+////            pIVar5 = pIVar3->next_obj;
+////            iVar6 += 1;
+////            if (!pIVar5->flag2) {
+////                cVar1 = pIVar5->prev_obj->flag2;
+////                pIVar3 = pIVar5;
+////                pIVar5 = pIVar5->prev_obj;
+////                while (!cVar1) {
+////                    cVar1 = pIVar5->prev_obj->flag2;
+////                    pIVar3 = pIVar5;
+////                    pIVar5 = pIVar5->prev_obj;
+////                }
+////            }
+////            else {
+////                cVar1 = pIVar3->self_ptr2->flag2;
+////                pIVar7 = pIVar3->self_ptr2;
+////                pIVar5 = pIVar3;
+////                while ((pIVar3 = pIVar7, !cVar1 && (pIVar5 == pIVar3->next_obj))) {
+////                    cVar1 = pIVar3->self_ptr2->flag2;
+////                    pIVar7 = pIVar3->self_ptr2;
+////                    pIVar5 = pIVar3;
+////                }
+////            }
+////        }
+////    }
+////    return iVar6;
+////}
 //}
-}
 
 
 
@@ -249,24 +239,6 @@ bool steam_write_install_path(char* out_buf, int out_buf_size){
     }
     return true;
 }
-
-
-/*
-0 : success
-1 : steam is already running
-2 : "Cannot create IPC pipe to Steam client process.  Steam is probably not running."
-3 : "ConnectToGlobalUser failed."
-4 : interface check failed
-5 : failed to load 'SteamUtils010' interface
-6 : failed to load 'SteamUser023' interface
-7 : "No appID found.  Either launch the game from Steam, or put the file steam_appid.txt containing the correct appID in your game folder."
-8 : "[S_API] SteamAPI_Init(): SteamAPI_IsSteamRunning() did not locate a running instance of Steam."
-9 : "Could not determine Steam client install directory."
-10: couldn't convert path to wide string
-11: Failed to load steam client module
-12: "Unable to locate interface factory in steamclient64.dll"
-13: failed to load 'SteamClient021' interface
-*/
 
 // FINISHED
 int init_steam_client(HMODULE* resulting_hmodule, ISteamClient** resulting_interface){
@@ -385,8 +357,8 @@ int init_steam(const char* pszInternalCheckInterfaceVersions){
         SteamReplace::SteamAPI_Shutdown();
         return 6;}
 
-    uint app_id = steam_utils->GetAppID();
-    ulonglong game_id = (ulonglong)app_id & 0xffffffff00ffffff; // not sure why this is a thing??
+    UINT app_id = steam_utils->GetAppID();
+    ULONG game_id = (ULONG)app_id & 0xffffffff00ffffff; // not sure why this is a thing??
     if (!app_id) {
         SteamReplace::SteamAPI_Shutdown();
         return 7;}
@@ -421,18 +393,12 @@ int init_steam(const char* pszInternalCheckInterfaceVersions){
 
 
 
-// SteamAPI_RunCallbacks
-int DAT_13b445894 = 0;
-int DAT_13b445890 = 0;
-// process_callbacks
-int process_callbacks_lock = 0;
-int DAT_13b444360 = 0;
 
+
+// FINISHED
 ISteamInput* DAT_SteamInput006;
 ISteamUtils* DAT_SteamUtils010;
 ISteamController* DAT_SteamController008;
-
-// FINISHED
 void Steam_RunFrames(){
     if (!DAT_ISteamClient_ptr) return;
     
@@ -457,142 +423,50 @@ void Steam_RunFrames(){
 }
 
 // 
-void process_callbacks(Threaded::ISteamObj* steam, HSteamPipe ipc_pipe, char is_server) {
-    char bVar1;
-    CCallbackBase* plVar2;
-    char cVar3;
-    Threaded::ISteamObjMap* pIVar4;
-    Threaded::ISteamObjMap* pIVar5;
-    Threaded::ISteamObjMap* pIVar6;
-    Threaded::ISteamObjMap* pIVar7;
-    undefined8 uVar8;
-    int iVar9;
-    bool bVar10;
-    undefined local_res20[8];
-    //uint local_48;
+void process_callbacks(HSteamPipe ipc_pipe, char is_server) {
     CallbackMsg_t cb_output;
-    //int local_44;
-    //undefined8 local_40;
-    //int local_38;
 
-    if (DAT_steam_BGetCallback_func && DAT_steam_FreeLastCallback_func && !process_callbacks_lock) {
-        process_callbacks_lock = 1;
-        steam->ipc_pipe = ipc_pipe;
-        while (DAT_steam_BGetCallback_func && (*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output) ) {
+    if (!DAT_steam_BGetCallback_func || !DAT_steam_FreeLastCallback_func)
+        return;
 
-            steam->userid = cb_output.m_hSteamUser;
-            if (DAT_13b444360 == 0) {
+    while ((*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output)) {
 
-
-                pIVar5 = steam->map_struct;
-                uVar8 = 0;
-                bVar1 = pIVar5->self_ptr2->flag2;
-                pIVar7 = pIVar5;
-                pIVar6 = pIVar5->self_ptr2;
-                while (bVar1 == 0) {
-                    if (pIVar6->cb_index < cb_output.m_iCallback) {
-                        pIVar4 = pIVar6->next_obj;
-                        pIVar6 = pIVar7;
-                    }
-                    else
-                        pIVar4 = pIVar6->prev_obj;
-                    
-                    pIVar7 = pIVar6;
-                    pIVar6 = pIVar4;
-                    bVar1 = pIVar4->flag2;
-                }
-                if (!pIVar7->flag2 && (pIVar7->cb_index <= cb_output.m_iCallback)) {
-                    steam->active_map_struct = pIVar7;
-                    while (pIVar7 != pIVar5){
-                        if (pIVar7->cb_index != cb_output.m_iCallback) break;
-
-
-                        //remap_cb_position(steam->active_map_struct);
-                        plVar2 = pIVar7->callback;
-                        if ((plVar2->m_nCallbackFlags & 2) == is_server) { 
-                            uVar8 = 1;
-                            plVar2->Run(cb_output.m_pubParam);
-                        }
-
-
-                        pIVar5 = steam->map_struct;
-                        pIVar7 = (SteamReplace::Threaded::ISteamObjMap*)steam->active_map_struct;
-                    } 
-                }
-                
-                steam->active_map_struct = pIVar5;
-                // this is probably for debugging?? not quite sure because we never set self_ptr2
-                //if (steam->unk_ptr2)
-                //    (*steam->unk_ptr2)(&cb_output, uVar8);
-                
+        // get callback from map
+        if  (pIVar7->cb_index == cb_output.m_iCallback) {
+            if ((pIVar7->callback->m_nCallbackFlags & 2) == is_server) {
+                pIVar7->callback->Run(cb_output.m_pubParam);
             }
-            else {
-                // doesn't happen because 'DAT_13b444360' is always zero
-                //FUN_13b4041f0(steam, &cb_output, is_server); 
-            }
-            memset(cb_output.m_pubParam, 0, cb_output.m_cubParam);
-            if (DAT_steam_FreeLastCallback_func)
-                (*DAT_steam_FreeLastCallback_func)(ipc_pipe);
         }
-        steam->ipc_pipe = 0;
-        process_callbacks_lock = 0;
-    }
-}
-
-
-void process_alt_callbacks(HSteamPipe ipc_pipe){
-    //undefined local_res10[24]; // goes into DAT_steam_BGetCallback_func() supposedly
-    CallbackMsg_t cb_output;
-
-    while (true) {
-        //Threaded::FUN_ISteam_thread();
-        if (!DAT_steam_BGetCallback_func) return;
-        if (!(*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output)) break;
-
-        //Threaded::FUN_ISteam_thread();
+                
+        memset(cb_output.m_pubParam, 0, cb_output.m_cubParam);
         if (DAT_steam_FreeLastCallback_func)
             (*DAT_steam_FreeLastCallback_func)(ipc_pipe);
     }
 }
 
-void SteamAPI_RunCallbacks(void){
-    int iVar1;
-    bool bVar2;
-    int iVar3;
 
-    // 0x8420  953  SteamAPI_RunCallbacks
-    bVar2 = false;
-    if (DAT_steam_IPC_pipe != 0) {
-        do {
-            DAT_13b445894 = 0;
-            //LOCK();
-            iVar1 = DAT_13b445890 + 1;
-            if (DAT_13b445890 == 0) {
-                DAT_13b445890 = iVar1;
-                Steam_RunFrames();
-                process_callbacks(Threaded::FUN_ISteam_thread(), DAT_steam_IPC_pipe, 0);
-                if (DAT_steam_alt_IPC_pipe)
-                    process_alt_callbacks(DAT_steam_alt_IPC_pipe);
-                    
-                bVar2 = true;
-            }
-            else {
-                DAT_13b445894 = 1;
-                DAT_13b445890 = iVar1;
-            }
-            //LOCK();
-            iVar1 = DAT_13b445890 - 1;
-        } while ((DAT_13b445890 == 1) && (DAT_13b445890 = iVar1, DAT_13b445894 != 0));
+void process_alt_callbacks(HSteamPipe ipc_pipe){
+    CallbackMsg_t cb_output;
+    while (true) {
+        if (!DAT_steam_BGetCallback_func) return;
+        if (!(*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output)) break;
 
-
-        DAT_13b445890 = iVar1;
-        if (bVar2)
-            return;
+        if (DAT_steam_FreeLastCallback_func)
+            (*DAT_steam_FreeLastCallback_func)(ipc_pipe);
     }
+}
 
-    if (DAT_steamclient_ReleaseThreadLocalMemory != 0)
+void SteamAPI_RunCallbacks(){
+    if (DAT_steam_IPC_pipe) {
+        Steam_RunFrames();
+        process_callbacks(DAT_steam_IPC_pipe, 0);
+        if (DAT_steam_alt_IPC_pipe)
+            process_alt_callbacks(DAT_steam_alt_IPC_pipe);
+        return;
+    }
+    // i dont think this code will ever run ??
+    if (DAT_steamclient_ReleaseThreadLocalMemory)
         (*DAT_steamclient_ReleaseThreadLocalMemory)(0);
-    
     if (DAT_steam_alt_IPC_pipe)
         process_alt_callbacks(DAT_steam_alt_IPC_pipe);
     return;
@@ -604,6 +478,7 @@ ISteamUser* SteamUser() {
 
 }
 
+namespace EPacket{
 static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789+/";
 std::string base64_encode(unsigned char* bytes_to_encode, unsigned int in_len)
 {
@@ -658,11 +533,10 @@ public:
     void OnEncryptedAppTicketResponse(EncryptedAppTicketResponse_t* pEncryptedAppTicketResponse, bool bIOFailure){
         switch (pEncryptedAppTicketResponse->m_eResult)
         {
-        case k_EResultOK:
-        {
+        case k_EResultOK:{
             unsigned char rgubTicket[1024];
             uint32 cubTicket;
-            if (SteamUser()->GetEncryptedAppTicket(rgubTicket, sizeof(rgubTicket), &cubTicket)){
+            if (SteamReplace::SteamUser()->GetEncryptedAppTicket(rgubTicket, sizeof(rgubTicket), &cubTicket)){
                 EncodedSteamAuth = base64_encode(rgubTicket, cubTicket);
                 std::cout << "Steam App Ticket received" << std::endl;
             }
@@ -685,62 +559,71 @@ public:
 
     CCallResult<SteamAuthHelper, EncryptedAppTicketResponse_t> m_SteamCallResultEncryptedAppTicket;
 };
+}
 
 int main(){
     const char* pszInternalCheckInterfaceVersions =
-        STEAMUTILS_INTERFACE_VERSION "\0"
-        STEAMNETWORKINGUTILS_INTERFACE_VERSION "\0"
-        STEAMAPPS_INTERFACE_VERSION "\0"
-        STEAMCONTROLLER_INTERFACE_VERSION "\0"
-        STEAMFRIENDS_INTERFACE_VERSION "\0"
-        STEAMGAMESEARCH_INTERFACE_VERSION "\0"
-        STEAMHTMLSURFACE_INTERFACE_VERSION "\0"
-        STEAMHTTP_INTERFACE_VERSION "\0"
-        STEAMINPUT_INTERFACE_VERSION "\0"
-        STEAMINVENTORY_INTERFACE_VERSION "\0"
-        STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION "\0"
-        STEAMMATCHMAKING_INTERFACE_VERSION "\0"
-        STEAMMUSICREMOTE_INTERFACE_VERSION "\0"
-        STEAMMUSIC_INTERFACE_VERSION "\0"
-        STEAMNETWORKINGMESSAGES_INTERFACE_VERSION "\0"
-        STEAMNETWORKINGSOCKETS_INTERFACE_VERSION "\0"
-        STEAMNETWORKING_INTERFACE_VERSION "\0"
-        STEAMPARENTALSETTINGS_INTERFACE_VERSION "\0"
-        STEAMPARTIES_INTERFACE_VERSION "\0"
-        STEAMREMOTEPLAY_INTERFACE_VERSION "\0"
-        STEAMREMOTESTORAGE_INTERFACE_VERSION "\0"
-        STEAMSCREENSHOTS_INTERFACE_VERSION "\0"
-        STEAMUGC_INTERFACE_VERSION "\0"
-        STEAMUSERSTATS_INTERFACE_VERSION "\0"
-        STEAMUSER_INTERFACE_VERSION "\0"
-        STEAMVIDEO_INTERFACE_VERSION "\0"
+        "SteamUtils010" "\0"
+        //"SteamNetworkingUtils004" "\0"
+        //"STEAMAPPS_INTERFACE_VERSION008" "\0"
+        "SteamController008" "\0"
+        //"SteamFriends017" "\0"
+        //"SteamMatchGameSearch001" "\0"
+        //"STEAMHTMLSURFACE_INTERFACE_VERSION_005" "\0"
+        //"STEAMHTTP_INTERFACE_VERSION003" "\0"
+        "SteamInput006" "\0"
+        //"STEAMINVENTORY_INTERFACE_V003" "\0"
+        //"SteamMatchMakingServers002" "\0"
+        //"SteamMatchMaking009" "\0"
+        //"STEAMMUSICREMOTE_INTERFACE_VERSION001" "\0"
+        //"STEAMMUSIC_INTERFACE_VERSION001" "\0"
+        //"SteamNetworkingMessages002" "\0"
+        //"SteamNetworkingSockets012" "\0"
+        //"SteamNetworking006" "\0"
+        //"STEAMPARENTALSETTINGS_INTERFACE_VERSION001" "\0"
+        //"SteamParties002" "\0"
+        //"STEAMREMOTEPLAY_INTERFACE_VERSION002" "\0"
+        //"STEAMREMOTESTORAGE_INTERFACE_VERSION016" "\0"
+        //"STEAMSCREENSHOTS_INTERFACE_VERSION003" "\0"
+        //"STEAMUGC_INTERFACE_VERSION020" "\0"
+        //"STEAMUSERSTATS_INTERFACE_VERSION012" "\0"
+        "SteamUser023" "\0"
+        //"STEAMVIDEO_INTERFACE_V007" "\0"
         "\0";
-    int error_code = SteamReplace::init_steam(pszInternalCheckInterfaceVersions);
 
+    switch (SteamReplace::init_steam(pszInternalCheckInterfaceVersions)) {
+    case  1: std::cout << "steam is already running" << std::endl; break;
+    case  2: std::cout << "Cannot create IPC pipe to Steam client process.  Steam is probably not running." << std::endl; break;
+    case  3: std::cout << "ConnectToGlobalUser failed." << std::endl; break;
+    case  4: std::cout << "interface check failed" << std::endl; break;
+    case  5: std::cout << "failed to load 'SteamUtils010' interface" << std::endl; break;
+    case  6: std::cout << "failed to load 'SteamUser023' interface" << std::endl; break;
+    case  7: std::cout << "No appID found.  Either launch the game from Steam, or put the file steam_appid.txt containing the correct appID in your game folder." << std::endl; break;
+    case  8: std::cout << "[S_API] SteamAPI_Init(): SteamAPI_IsSteamRunning() did not locate a running instance of Steam." << std::endl; break;
+    case  9: std::cout << "Could not determine Steam client install directory." << std::endl; break;
+    case 10: std::cout << "couldn't convert path to wide string" << std::endl; break;
+    case 11: std::cout << "Failed to load steam client module" << std::endl; break;
+    case 12: std::cout << "Unable to locate interface factory in steamclient64.dll" << std::endl; break;
+    case 13: std::cout << "failed to load 'SteamClient021' interface" << std::endl; break;
+    case 0:{
+        std::atomic<bool> bHaltBackgroundThread{ false };
+        // Set up a background thread to run
+        std::thread HandlerThread = std::thread([&]() {
+            while (!bHaltBackgroundThread) {
+                //Modio::RunPendingHandlers();
+                SteamReplace::SteamAPI_RunCallbacks();
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+            bHaltBackgroundThread = false;
+        });
 
-    std::atomic<bool> bHaltBackgroundThread{ false };
-    // Set up a background thread to run
-    std::thread HandlerThread = std::thread([&]() {
-        while (!bHaltBackgroundThread){
-            //Modio::RunPendingHandlers();
-            SteamAPI_RunCallbacks();
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        bHaltBackgroundThread = false;
-    });
+        EPacket::SteamAuthHelper* SteamCallbacks = new EPacket::SteamAuthHelper();
+        // Get the Steam Encrypted App Ticket
+        char k_unSecretData[] = { 0x39, 0x66, 0x37, 0x61, 0x62, 0x64, 0x36, 0x33, 0x37, 0x35, 0x63, 0x34, 0x61, 0x33, 0x66, 0x64, 0x35, 0x30, 0x61, 0x37, 0x32, 0x62, 0x30, 0x39, 0x31, 0x31, 0x31, 0x35, 0x63, 0x62, 0x32, 0x33, 0x37, 0x32, 0x64, 0x35, 0x65, 0x35, 0x61, 0x63, 0x37, 0x61, 0x37, 0x37, 0x31, 0x39, 0x65, 0x35, 0x34, 0x30, 0x35, 0x33, 0x30, 0x62, 0x32, 0x39, 0x37, 0x65, 0x63, 0x34, 0x62, 0x65, 0x37, 0x39, 0x00 };
+        SteamAPICall_t hSteamAPICall = SteamReplace::SteamUser()->RequestEncryptedAppTicket(&k_unSecretData, sizeof(k_unSecretData));
+        SteamCallbacks->m_SteamCallResultEncryptedAppTicket.Set(hSteamAPICall, SteamCallbacks, &EPacket::SteamAuthHelper::OnEncryptedAppTicketResponse);
 
-
-
-    SteamAuthHelper* SteamCallbacks = new SteamAuthHelper();
-    // Get the Steam Encrypted App Ticket
-    char k_unSecretData[] = { 0x39, 0x66, 0x37, 0x61, 0x62, 0x64, 0x36, 0x33, 0x37, 0x35, 0x63, 0x34, 0x61, 0x33, 0x66, 0x64, 0x35, 0x30, 0x61, 0x37, 0x32, 0x62, 0x30, 0x39, 0x31, 0x31, 0x31, 0x35, 0x63, 0x62, 0x32, 0x33, 0x37, 0x32, 0x64, 0x35, 0x65, 0x35, 0x61, 0x63, 0x37, 0x61, 0x37, 0x37, 0x31, 0x39, 0x65, 0x35, 0x34, 0x30, 0x35, 0x33, 0x30, 0x62, 0x32, 0x39, 0x37, 0x65, 0x63, 0x34, 0x62, 0x65, 0x37, 0x39, 0x00 };
-    SteamAPICall_t hSteamAPICall = SteamReplace::SteamUser()->RequestEncryptedAppTicket(&k_unSecretData, sizeof(k_unSecretData));
-    SteamCallbacks->m_SteamCallResultEncryptedAppTicket.Set(hSteamAPICall, SteamCallbacks, &SteamAuthHelper::OnEncryptedAppTicketResponse);
-
-    SteamAuthComplete.get_future().wait();
-
-
-
-
+        EPacket::SteamAuthComplete.get_future().wait();
+    }}
 }
 
