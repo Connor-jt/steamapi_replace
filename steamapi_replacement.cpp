@@ -1,6 +1,7 @@
 // steamapi_replacement.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include "steam_deps.h"
 
 #include "C:\Users\Joe bingle\Downloads\steamworks_sdk_160\SteamLiteshop\sdk\public\steam\steam_api.h"
 
@@ -16,6 +17,7 @@
 #include <handleapi.h>
 #include <thread>
 #include <future>
+#include <map>
 
 using namespace std;
 
@@ -39,7 +41,7 @@ typedef bool (*Steam_GetAPICallResult)(HSteamPipe hSteamPipe, SteamAPICall_t hSt
 static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static Steam_BGetCallback     DAT_steam_BGetCallback_func;
 static Steam_FreeLastCallback DAT_steam_FreeLastCallback_func;
-static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
+//static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
 
 // statics
 static ISteamClient* DAT_ISteamClient_ptr;
@@ -50,7 +52,7 @@ static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
 static HSteamUser DAT_steam_user;
 
-
+static std::map<int, s_deps::CCallbackBase*> registered_callbacks;
 
 //namespace Threaded {
 //class ISteamObjMap { // size: 0x30
@@ -382,7 +384,7 @@ int init_steam(const char* pszInternalCheckInterfaceVersions){
     }
     DAT_steam_BGetCallback_func = (Steam_BGetCallback)GetProcAddress(DAT_steamclient_hmodule, "Steam_BGetCallback");
     DAT_steam_FreeLastCallback_func = (Steam_FreeLastCallback)GetProcAddress(DAT_steamclient_hmodule, "Steam_FreeLastCallback");
-    DAT_steam_GetAPICallResult_func = (Steam_GetAPICallResult)GetProcAddress(DAT_steamclient_hmodule, "Steam_GetAPICallResult");
+    //DAT_steam_GetAPICallResult_func = (Steam_GetAPICallResult)GetProcAddress(DAT_steamclient_hmodule, "Steam_GetAPICallResult");
 
     // not sure what our custom function would look like for this, if it even gets used??
     //DAT_ISteamClient_ptr->Set_SteamAPI_CCheckCallbackRegisteredInProcess(Threaded::SteamAPI_CheckCallbackRegistered_t_func);
@@ -424,19 +426,15 @@ void Steam_RunFrames(){
 
 // 
 void process_callbacks(HSteamPipe ipc_pipe, char is_server) {
-    CallbackMsg_t cb_output;
-
     if (!DAT_steam_BGetCallback_func || !DAT_steam_FreeLastCallback_func)
         return;
 
+    CallbackMsg_t cb_output;
     while ((*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output)) {
 
         // get callback from map
-        if  (pIVar7->cb_index == cb_output.m_iCallback) {
-            if ((pIVar7->callback->m_nCallbackFlags & 2) == is_server) {
-                pIVar7->callback->Run(cb_output.m_pubParam);
-            }
-        }
+        auto var = registered_callbacks[cb_output.m_iCallback];
+        if (var) var->Run(cb_output.m_pubParam);
                 
         memset(cb_output.m_pubParam, 0, cb_output.m_cubParam);
         if (DAT_steam_FreeLastCallback_func)
@@ -528,9 +526,9 @@ std::string base64_encode(unsigned char* bytes_to_encode, unsigned int in_len)
 static std::promise<void> SteamAuthComplete;
 static std::string EncodedSteamAuth;
 
-class SteamAuthHelper{
-public:
-    void OnEncryptedAppTicketResponse(EncryptedAppTicketResponse_t* pEncryptedAppTicketResponse, bool bIOFailure){
+//class SteamAuthHelper{
+//public:
+    static void OnEncryptedAppTicketResponse(EncryptedAppTicketResponse_t* pEncryptedAppTicketResponse, bool bIOFailure){
         switch (pEncryptedAppTicketResponse->m_eResult)
         {
         case k_EResultOK:{
@@ -557,8 +555,8 @@ public:
         SteamAuthComplete.set_value();
     }
 
-    CCallResult<SteamAuthHelper, EncryptedAppTicketResponse_t> m_SteamCallResultEncryptedAppTicket;
-};
+    static s_deps::CCallResult</*SteamAuthHelper,*/ EncryptedAppTicketResponse_t> m_SteamCallResultEncryptedAppTicket;
+//};
 }
 
 int main(){
@@ -605,7 +603,7 @@ int main(){
     case 11: std::cout << "Failed to load steam client module" << std::endl; break;
     case 12: std::cout << "Unable to locate interface factory in steamclient64.dll" << std::endl; break;
     case 13: std::cout << "failed to load 'SteamClient021' interface" << std::endl; break;
-    case 0:{
+    case  0:{
         std::atomic<bool> bHaltBackgroundThread{ false };
         // Set up a background thread to run
         std::thread HandlerThread = std::thread([&]() {
@@ -617,11 +615,13 @@ int main(){
             bHaltBackgroundThread = false;
         });
 
-        EPacket::SteamAuthHelper* SteamCallbacks = new EPacket::SteamAuthHelper();
+        //EPacket::SteamAuthHelper* SteamCallbacks = new EPacket::SteamAuthHelper();
         // Get the Steam Encrypted App Ticket
         char k_unSecretData[] = { 0x39, 0x66, 0x37, 0x61, 0x62, 0x64, 0x36, 0x33, 0x37, 0x35, 0x63, 0x34, 0x61, 0x33, 0x66, 0x64, 0x35, 0x30, 0x61, 0x37, 0x32, 0x62, 0x30, 0x39, 0x31, 0x31, 0x31, 0x35, 0x63, 0x62, 0x32, 0x33, 0x37, 0x32, 0x64, 0x35, 0x65, 0x35, 0x61, 0x63, 0x37, 0x61, 0x37, 0x37, 0x31, 0x39, 0x65, 0x35, 0x34, 0x30, 0x35, 0x33, 0x30, 0x62, 0x32, 0x39, 0x37, 0x65, 0x63, 0x34, 0x62, 0x65, 0x37, 0x39, 0x00 };
         SteamAPICall_t hSteamAPICall = SteamReplace::SteamUser()->RequestEncryptedAppTicket(&k_unSecretData, sizeof(k_unSecretData));
-        SteamCallbacks->m_SteamCallResultEncryptedAppTicket.Set(hSteamAPICall, SteamCallbacks, &EPacket::SteamAuthHelper::OnEncryptedAppTicketResponse);
+        /*SteamCallbacks->*/EPacket::m_SteamCallResultEncryptedAppTicket.Set(/*hSteamAPICall,*/ /*SteamCallbacks,*/ &EPacket::/*SteamAuthHelper::*/OnEncryptedAppTicketResponse);
+
+        SteamReplace::registered_callbacks[EncryptedAppTicketResponse_t::k_iCallback] = (s_deps::CCallbackBase*)&EPacket::m_SteamCallResultEncryptedAppTicket;
 
         EPacket::SteamAuthComplete.get_future().wait();
     }}
