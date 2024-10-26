@@ -172,7 +172,7 @@ ISteamObj* FUN_ISteam_thread(void){
             callbacks.unk_ptr2 = 0;
             callbacks.userid = 0;
             callbacks.ipc_pipe = 0;
-            callbacks.active_map_struct = (ISteamObj*)callbacks.map_struct;
+            callbacks.active_map_struct = callbacks.map_struct;
             atexit(tls_exit);
             //_Init_thread_footer(callbacks.tls_header);
             return &callbacks;
@@ -826,6 +826,41 @@ void Steam_RunFrames(){
 }
 
 // 
+Threaded::ISteamObjMap* remap_cb_position(Threaded::ISteamObjMap* callback){
+    char bVar1;
+    Threaded::ISteamObjMap* pIVar2;
+    Threaded::ISteamObjMap* pIVar3;
+
+    pIVar3 = callback->prev_obj->next_obj;
+
+    if (pIVar3->flag2) {
+        pIVar2 = callback->prev_obj;
+        bVar1 = pIVar2->self_ptr2->flag2;
+        pIVar3 = pIVar2->self_ptr2;
+        while ((bVar1 == 0 && (pIVar2 == pIVar3->next_obj))) {
+            callback->prev_obj = pIVar3;
+            bVar1 = pIVar3->self_ptr2->flag2;
+            pIVar2 = pIVar3;
+            pIVar3 = pIVar3->self_ptr2;
+        }
+        callback->prev_obj = pIVar3;
+        return callback;
+
+    } else {
+
+        bVar1 = pIVar3->prev_obj->flag2;
+        pIVar2 = pIVar3->prev_obj;
+        while (bVar1 == 0) {
+            bVar1 = pIVar2->prev_obj->flag2;
+            pIVar3 = pIVar2;
+            pIVar2 = pIVar2->prev_obj;
+        }
+        callback->prev_obj = pIVar3;
+        return callback;
+    }
+}
+
+// 
 void process_callbacks(Threaded::ISteamObj* steam, HSteamPipe ipc_pipe, char is_server) {
     char bVar1;
     CCallbackBase* plVar2;
@@ -842,7 +877,7 @@ void process_callbacks(Threaded::ISteamObj* steam, HSteamPipe ipc_pipe, char is_
     CallbackMsg_t cb_output;
     //int local_44;
     //undefined8 local_40;
-    int local_38;
+    //int local_38;
 
     if (DAT_steam_BGetCallback_func && DAT_steam_FreeLastCallback_func && !process_callbacks_lock) {
         process_callbacks_lock = 1;
@@ -876,7 +911,7 @@ void process_callbacks(Threaded::ISteamObj* steam, HSteamPipe ipc_pipe, char is_
                         if (pIVar7->cb_index != cb_output.m_iCallback) break;
 
 
-                        FUN_13b403b30(&steam->active_map_struct);
+                        remap_cb_position(steam->active_map_struct);
                         plVar2 = pIVar7->callback;
                         if ((plVar2->m_nCallbackFlags & 2) == is_server) { 
                             uVar8 = 1;
@@ -911,7 +946,7 @@ void process_callbacks(Threaded::ISteamObj* steam, HSteamPipe ipc_pipe, char is_
 void process_callbacks_wrapper(HSteamPipe ipc_pipe) {
     process_callbacks(Threaded::FUN_ISteam_thread(), ipc_pipe, 0);
 }
-void process_alt_callbacks(undefined4 ipc_pipe){
+void process_alt_callbacks(HSteamPipe ipc_pipe){
     //undefined local_res10[24]; // goes into DAT_steam_BGetCallback_func() supposedly
     CallbackMsg_t cb_output;
 
