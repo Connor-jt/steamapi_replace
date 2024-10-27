@@ -1,8 +1,8 @@
 #pragma once
 
 namespace s_deps {
-	typedef long SteamAPICall_t;
-	const SteamAPICall_t k_uAPICallInvalid = 0x0;
+	//typedef long SteamAPICall_t;
+	//const SteamAPICall_t k_uAPICallInvalid = 0x0;
 
 	class CCallbackBase {
 	public:
@@ -15,7 +15,7 @@ namespace s_deps {
 	class CCallResult : private CCallbackBase {
 	public:
 		typedef void (/*T::*/*func_t)(P*, bool);
-		SteamAPICall_t m_hAPICall;
+		//SteamAPICall_t m_hAPICall;
 		//T* m_pObj;
 		func_t m_Func;
 

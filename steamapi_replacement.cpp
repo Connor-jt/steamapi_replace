@@ -9,7 +9,8 @@
 #include <iostream>
 #include <cstdio>
 
-#include <Libloaderapi.h>
+#include <windows.h>
+//#include <Libloaderapi.h>
 #include <Processenv.h>
 #include <winreg.h>
 #include <stringapiset.h>
@@ -41,12 +42,12 @@ typedef bool (*Steam_GetAPICallResult)(HSteamPipe hSteamPipe, SteamAPICall_t hSt
 static ReleaseThreadLocalMemory DAT_steamclient_ReleaseThreadLocalMemory;
 static Steam_BGetCallback     DAT_steam_BGetCallback_func;
 static Steam_FreeLastCallback DAT_steam_FreeLastCallback_func;
-//static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
+static Steam_GetAPICallResult DAT_steam_GetAPICallResult_func;
 
 // statics
 static ISteamClient* DAT_ISteamClient_ptr;
 static ISteamUser* DAT_ISteamUser_ptr;
-//static long* DAT_steam_client_interface17; // MARKED FOR REMOVAL!!
+static long* DAT_steam_client_interface17; // MARKED FOR REMOVAL!!
 static HMODULE DAT_steamclient_hmodule;
 static HSteamPipe DAT_steam_IPC_pipe;
 static HSteamPipe DAT_steam_alt_IPC_pipe;
@@ -248,7 +249,7 @@ int init_steam_client(HMODULE* resulting_hmodule, ISteamClient** resulting_inter
         return 8;
 
     CHAR steam_install_path[0x410] = {0};
-    if (!steam_write_install_path(steam_install_path, 0x410))
+    if (!steam_write_install_path(steam_install_path, sizeof(steam_install_path)))
         return 9;
     
     // count chars in string (including the null terminator)
@@ -320,7 +321,7 @@ int init_steam(const char* pszInternalCheckInterfaceVersions){
     if (DAT_ISteamClient_ptr) return 1;
 
     int result = init_steam_client(&DAT_steamclient_hmodule, &DAT_ISteamClient_ptr);
-    if (!result) return result;
+    if (result) return result;
 
     DAT_steam_IPC_pipe = DAT_ISteamClient_ptr->CreateSteamPipe();
     if (!DAT_steam_IPC_pipe) {
@@ -364,27 +365,28 @@ int init_steam(const char* pszInternalCheckInterfaceVersions){
     if (!app_id) {
         SteamReplace::SteamAPI_Shutdown();
         return 7;}
+    //UINT app_id = 0x00085E4E;
 
     char str_buf[32];
     if (!GetEnvironmentVariableA("SteamAppId", 0, 0)) {
         memset(str_buf, 0, 32);
-        sprintf(str_buf, "%u", app_id); // WARNING: ????
+        sprintf_s(str_buf, (size_t)32, "%u", app_id);
         SetEnvironmentVariableA("SteamAppId", str_buf);
     }
     if (!GetEnvironmentVariableA("SteamGameId", 0, 0)) {
         memset(str_buf, 0, 32);
-        sprintf(str_buf, "%llu", game_id);
+        sprintf_s(str_buf, (size_t)32, "%llu", app_id);
         SetEnvironmentVariableA("SteamGameId", str_buf);
         SetEnvironmentVariableA("SteamOverlayGameId", str_buf);
     }
     if (!GetEnvironmentVariableA("SteamOverlayGameId", 0, 0)) {
         memset(str_buf, 0, 32);
-        sprintf(str_buf, "%llu", game_id);
+        sprintf_s(str_buf, (size_t)32, "%llu", app_id);
         SetEnvironmentVariableA("SteamOverlayGameId", str_buf);
     }
     DAT_steam_BGetCallback_func = (Steam_BGetCallback)GetProcAddress(DAT_steamclient_hmodule, "Steam_BGetCallback");
     DAT_steam_FreeLastCallback_func = (Steam_FreeLastCallback)GetProcAddress(DAT_steamclient_hmodule, "Steam_FreeLastCallback");
-    //DAT_steam_GetAPICallResult_func = (Steam_GetAPICallResult)GetProcAddress(DAT_steamclient_hmodule, "Steam_GetAPICallResult");
+    DAT_steam_GetAPICallResult_func = (Steam_GetAPICallResult)GetProcAddress(DAT_steamclient_hmodule, "Steam_GetAPICallResult");
 
     // not sure what our custom function would look like for this, if it even gets used??
     //DAT_ISteamClient_ptr->Set_SteamAPI_CCheckCallbackRegisteredInProcess(Threaded::SteamAPI_CheckCallbackRegistered_t_func);
@@ -425,6 +427,10 @@ void Steam_RunFrames(){
 }
 
 // 
+void route_callback(int iCallback, void* data) {
+    auto var = registered_callbacks[iCallback];
+    if (var) var->Run(data);
+}
 void process_callbacks(HSteamPipe ipc_pipe, char is_server) {
     if (!DAT_steam_BGetCallback_func || !DAT_steam_FreeLastCallback_func)
         return;
@@ -432,13 +438,21 @@ void process_callbacks(HSteamPipe ipc_pipe, char is_server) {
     CallbackMsg_t cb_output;
     while ((*DAT_steam_BGetCallback_func)(ipc_pipe, &cb_output)) {
 
-        // get callback from map
-        auto var = registered_callbacks[cb_output.m_iCallback];
-        if (var) var->Run(cb_output.m_pubParam);
+        cout << "Callback recieved: " << cb_output.m_iCallback << "\n";
+
+        // if the callback type is 'SteamAPICallCompleted_t' then we have to manually await the thing
+        if (cb_output.m_iCallback == 703) {
+            SteamAPICallCompleted_t* pCallCompleted = (SteamAPICallCompleted_t*)cb_output.m_pubParam;
+            void* pTmpCallResult = new char[pCallCompleted->m_cubParam];
+            bool bFailed;
+            if ((*DAT_steam_GetAPICallResult_func)(ipc_pipe, pCallCompleted->m_hAsyncCall, pTmpCallResult, pCallCompleted->m_cubParam, pCallCompleted->m_iCallback, &bFailed))
+                route_callback(pCallCompleted->m_iCallback, pTmpCallResult);
+            delete[] pTmpCallResult;
+        }
+        else route_callback(cb_output.m_iCallback, cb_output.m_pubParam);
                 
         memset(cb_output.m_pubParam, 0, cb_output.m_cubParam);
-        if (DAT_steam_FreeLastCallback_func)
-            (*DAT_steam_FreeLastCallback_func)(ipc_pipe);
+        (*DAT_steam_FreeLastCallback_func)(ipc_pipe);
     }
 }
 
@@ -537,6 +551,7 @@ static std::string EncodedSteamAuth;
             if (SteamReplace::SteamUser()->GetEncryptedAppTicket(rgubTicket, sizeof(rgubTicket), &cubTicket)){
                 EncodedSteamAuth = base64_encode(rgubTicket, cubTicket);
                 std::cout << "Steam App Ticket received" << std::endl;
+                std::cout << EncodedSteamAuth << std::endl;
             }
             else printf("GetEncryptedAppTicket failed.\n");
         }
@@ -609,8 +624,8 @@ int main(){
         std::thread HandlerThread = std::thread([&]() {
             while (!bHaltBackgroundThread) {
                 //Modio::RunPendingHandlers();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 SteamReplace::SteamAPI_RunCallbacks();
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
             }
             bHaltBackgroundThread = false;
         });
@@ -619,11 +634,16 @@ int main(){
         // Get the Steam Encrypted App Ticket
         char k_unSecretData[] = { 0x39, 0x66, 0x37, 0x61, 0x62, 0x64, 0x36, 0x33, 0x37, 0x35, 0x63, 0x34, 0x61, 0x33, 0x66, 0x64, 0x35, 0x30, 0x61, 0x37, 0x32, 0x62, 0x30, 0x39, 0x31, 0x31, 0x31, 0x35, 0x63, 0x62, 0x32, 0x33, 0x37, 0x32, 0x64, 0x35, 0x65, 0x35, 0x61, 0x63, 0x37, 0x61, 0x37, 0x37, 0x31, 0x39, 0x65, 0x35, 0x34, 0x30, 0x35, 0x33, 0x30, 0x62, 0x32, 0x39, 0x37, 0x65, 0x63, 0x34, 0x62, 0x65, 0x37, 0x39, 0x00 };
         SteamAPICall_t hSteamAPICall = SteamReplace::SteamUser()->RequestEncryptedAppTicket(&k_unSecretData, sizeof(k_unSecretData));
+        cout << "API call num: " << hSteamAPICall << "\n";
+        cout << "Callback expected: " << EncryptedAppTicketResponse_t::k_iCallback << "\n";
         /*SteamCallbacks->*/EPacket::m_SteamCallResultEncryptedAppTicket.Set(/*hSteamAPICall,*/ /*SteamCallbacks,*/ &EPacket::/*SteamAuthHelper::*/OnEncryptedAppTicketResponse);
 
         SteamReplace::registered_callbacks[EncryptedAppTicketResponse_t::k_iCallback] = (s_deps::CCallbackBase*)&EPacket::m_SteamCallResultEncryptedAppTicket;
 
         EPacket::SteamAuthComplete.get_future().wait();
+
+        bHaltBackgroundThread = false;
+        HandlerThread.join();
     }}
 }
 
